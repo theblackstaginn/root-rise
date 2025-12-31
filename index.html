@@ -28,6 +28,7 @@
     <!-- SECTION 2: ROOT & RISE CARD + AFFIRMATION GLASS -->
     <section class="rr-section" aria-label="Root &amp; Rise">
       <h2 class="rr-section-title">Root &amp; Rise</h2>
+
       <div class="rr-card-wrap">
         <img class="rr-card-img" src="./root-rise-card.png" alt="" loading="lazy" />
         <div class="rr-card-glass" id="rrAffirmation" aria-live="polite"></div>
@@ -39,7 +40,10 @@
 
     <!-- SECTION 4: CARED FOR LIST -->
     <section class="rr-section" aria-label="Cared for">
-      <h2 class="rr-section-title">Cared For</h2>
+      <div class="rr-section-title-row">
+        <h2 class="rr-section-title">Cared For</h2>
+        <button class="rr-btn rr-btn-ghost" type="button" id="rrClearCared" title="Clear cared for list">Clear</button>
+      </div>
       <div class="rr-cared-list" id="rrCaredList" aria-label="Cared for history"></div>
     </section>
   </main>
