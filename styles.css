@@ -1,0 +1,188 @@
+/* =========================
+   Root & Rise — Core Styles
+   ========================= */
+
+:root{
+  --bg-ink: #0e1412;
+  --bg-panel: rgba(18, 26, 22, 0.72);
+  --line-soft: rgba(255,255,255,.08);
+
+  --text-main: #e4e0d8;
+  --text-muted: rgba(228,224,216,.68);
+
+  --accent-rose: #c58aa0;
+  --accent-leaf: #7fa28a;
+
+  --radius: 18px;
+  --blur: 12px;
+}
+
+*{
+  box-sizing: border-box;
+}
+
+html, body{
+  margin:0;
+  padding:0;
+  min-height:100%;
+  background:
+    linear-gradient(
+      rgba(14,20,18,.92),
+      rgba(14,20,18,.92)
+    ),
+    url("./bg-01.png") center/cover no-repeat fixed;
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+#app{
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 18px 80px;
+}
+
+/* =================
+   Header
+   ================= */
+
+.app-header{
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.app-header h1{
+  margin:0;
+  font-size: 2.2rem;
+  letter-spacing: .04em;
+}
+
+.subtitle{
+  margin-top: 6px;
+  font-size: .95rem;
+  color: var(--text-muted);
+}
+
+/* =================
+   Panels
+   ================= */
+
+.panel{
+  background: var(--bg-panel);
+  backdrop-filter: blur(var(--blur));
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 22px;
+  border: 1px solid var(--line-soft);
+}
+
+.panel h2{
+  margin-top:0;
+  font-size: 1.2rem;
+  letter-spacing: .04em;
+}
+
+/* =================
+   Today List
+   ================= */
+
+.plant-list{
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.today-item{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,.25);
+}
+
+.today-item img{
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.today-item .name{
+  flex: 1;
+}
+
+.today-item button{
+  background: none;
+  border: 1px solid var(--line-soft);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* =================
+   Root & Rise Card
+   ================= */
+
+.card-panel{
+  text-align: center;
+}
+
+.root-rise-card{
+  max-width: 100%;
+  border-radius: 16px;
+  margin-bottom: 14px;
+}
+
+.affirmation{
+  font-style: italic;
+  color: var(--accent-rose);
+  font-size: 1rem;
+}
+
+/* =================
+   Plant Grid
+   ================= */
+
+.plant-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.plant-card{
+  background: rgba(0,0,0,.28);
+  border-radius: 16px;
+  padding: 12px;
+  text-align: center;
+}
+
+.plant-card img{
+  width: 80px;
+  height: 80px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+
+.plant-card .plant-name{
+  font-size: .9rem;
+  margin-bottom: 4px;
+}
+
+.plant-card .meta{
+  font-size: .75rem;
+  color: var(--text-muted);
+}
+
+/* =================
+   Responsive
+   ================= */
+
+@media (max-width: 600px){
+  #app{
+    padding: 22px 14px 60px;
+  }
+
+  .app-header h1{
+    font-size: 1.8rem;
+  }
+}
