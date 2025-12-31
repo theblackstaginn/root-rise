@@ -1,18 +1,18 @@
-/* Root & Rise — app.js (RR-CSS MATCH, COHESIVE)
+/* Root & Rise — app.js (RR-CSS MATCH)
    - Uses existing DOM from index.html
-   - Tiles: image-only, clickable
-     • glow + embers ONLY when due
-   - Modal: scrollable (CSS handles max-height + overflow)
-   - Background set via CSS var --bgUrl (NOT background-image override)
-   - localStorage persistence
+   - Tiles are image-only; due tiles glow + embers ring
+   - Modal shows full info + “Mark Cared For”
+   - Daily: affirmation + grounding (with candle prefix) rotates by date
 */
 
 (() => {
   "use strict";
 
   /* =========================
-     CONFIG: Assets in REPO ROOT
+     CONFIG: assets are in REPO ROOT
      ========================= */
+  const ASSET_DIR = "./"; // root
+
   const ASSETS = {
     bg: "bg-01.png",
     plants: {
@@ -23,9 +23,14 @@
       "cactus": "cactus.png",
       "propagation-station": "propagation-station.png",
       "monstera": "monstera.png",
-      "tiny-cactus": "tiny-cactus.png" // optional; falls back to cactus if missing
+      "tiny-cactus": "tiny-cactus.png" // optional; will fall back to cactus if missing
     }
   };
+
+  function assetUrl(filename) {
+    // Bulletproof URL resolution for GitHub Pages / iOS Safari
+    return new URL(ASSET_DIR + filename, document.baseURI).toString();
+  }
 
   /* =========================
      DATA: Plants + Care Guidance
@@ -165,7 +170,7 @@
     "I listen, then I act.","I am guided by devotion.","I am allowed to enjoy this.","I choose a softer story.","I trust my becoming."
   ].slice(0, 90);
 
-  const GROUNDING_ACTIONS = [
+  const GROUNDING_ACTIONS_RAW = [
     "Drink a full glass of water before anything else.","Stand barefoot for 60 seconds and feel the floor hold you.",
     "Open a window. Take five slow breaths.","Wipe one small surface until it shines.","Do a 2-minute shoulder roll + neck stretch.",
     "Light a candle and watch the flame for one minute.","Put on one song and move however your body wants.",
@@ -188,12 +193,26 @@
     "Say out loud: “I am safe. I am here.”"
   ].slice(0, 45);
 
+  // ✅ Your instruction: prepend “Light a candle.” to ALL grounding actions.
+  function normalizeGrounding(actions) {
+    return actions.map((a) => {
+      const s = String(a ?? "").trim();
+      if (!s) return "Light a candle.";
+      if (s.toLowerCase().startsWith("light a candle.")) return s;
+      // Also handle the one that says “Light a candle and watch...”
+      if (s.toLowerCase().startsWith("light a candle ")) return `Light a candle. ${s.replace(/^light a candle\s*/i, "")}`.trim();
+      return `Light a candle. ${s}`;
+    });
+  }
+
+  const GROUNDING_ACTIONS = normalizeGrounding(GROUNDING_ACTIONS_RAW);
+
   /* =========================
      STORAGE
      ========================= */
   const STORAGE = {
-    plantState: "rr.plantState.v4",
-    caredLog: "rr.caredLog.v4"
+    plantState: "rr.plantState.v3",
+    caredLog: "rr.caredLog.v3"
   };
 
   /* =========================
@@ -274,12 +293,11 @@
   }
 
   function plantImageFile(plant) {
-    const file = ASSETS.plants[plant.imageKey] || "";
-    if (plant.imageKey === "tiny-cactus") {
-      // fallback if you never uploaded tiny-cactus.png
-      return file || ASSETS.plants.cactus;
+    // If tiny-cactus.png is missing, we still show cactus.png.
+    if (plant.imageKey === "tiny-cactus" && !ASSETS.plants["tiny-cactus"]) {
+      return ASSETS.plants.cactus;
     }
-    return file;
+    return ASSETS.plants[plant.imageKey] || "";
   }
 
   function computeDue(plant, state) {
@@ -324,7 +342,7 @@
      ========================= */
   function seedEmbers(container, count) {
     container.innerHTML = "";
-    const n = Math.max(10, Math.min(22, count)); // more prominent than before
+    const n = Math.max(10, Math.min(24, count)); // ✅ more prominent
 
     for (let i = 0; i < n; i++) {
       const s = document.createElement("span");
@@ -332,9 +350,9 @@
 
       const left = Math.random() * 100;
       const delay = Math.random() * 2.2;
-      const dur = 1.4 + Math.random() * 2.1;     // slightly quicker
-      const size = 3 + Math.random() * 5.2;      // bigger embers
-      const drift = (Math.random() * 56) - 28;   // wider drift
+      const dur = 1.4 + Math.random() * 2.2;
+      const size = 2.8 + Math.random() * 4.8; // ✅ bigger particles
+      const drift = (Math.random() * 58) - 29;
 
       s.style.left = `${left}%`;
       s.style.animationDelay = `${delay}s`;
@@ -353,8 +371,8 @@
   let currentPlantId = null;
 
   function renderDaily() {
-    // set background via CSS var (keeps your background stack intact)
-    document.documentElement.style.setProperty("--bgUrl", `url("./${ASSETS.bg}")`);
+    // ✅ Use CSS variable so your layered background stays intact
+    document.documentElement.style.setProperty("--bgUrl", `url("${assetUrl(ASSETS.bg)}")`);
 
     if (el.affirmation) el.affirmation.textContent = pickDaily(AFFIRMATIONS);
     if (el.grounding) el.grounding.textContent = pickDaily(GROUNDING_ACTIONS);
@@ -367,7 +385,8 @@
 
     el.tiles.innerHTML = PLANTS.map((p) => {
       const due = computeDue(p, state);
-      const img = plantImageFile(p);
+      const file = plantImageFile(p);
+      const imgUrl = file ? assetUrl(file) : "";
       const dueClass = due.isDue ? "is-due" : "";
       const aria = `${p.name}${p.countLabel ? " " + p.countLabel : ""}`;
 
@@ -375,7 +394,7 @@
         <button class="rr-tile ${dueClass}" type="button"
           data-id="${escapeAttr(p.id)}"
           aria-label="${escapeHTML(aria)}">
-          <div class="rr-tile-img" style="background-image:url('./${escapeAttr(img)}')"></div>
+          <div class="rr-tile-img" style="background-image:url('${escapeAttr(imgUrl)}')"></div>
           <div class="rr-embers" aria-hidden="true"></div>
         </button>
       `;
@@ -430,8 +449,10 @@
 
     currentPlantId = plantId;
 
-    const img = plantImageFile(plant);
-    if (el.modalThumb) el.modalThumb.style.backgroundImage = `url("./${img}")`;
+    const file = plantImageFile(plant);
+    const imgUrl = file ? assetUrl(file) : "";
+
+    if (el.modalThumb) el.modalThumb.style.backgroundImage = `url("${imgUrl}")`;
     if (el.modalTitle) el.modalTitle.textContent = `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`;
     if (el.modalSub) el.modalSub.textContent = due.isDue ? "Due now." : "Not due yet.";
 
