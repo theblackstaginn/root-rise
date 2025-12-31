@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0e1412" />
+
+  <title>Root & Rise</title>
+
+  <!-- App styles -->
+  <link rel="stylesheet" href="./styles.css" />
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.webmanifest" />
+</head>
+
+<body>
+  <main id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <h1>Root &amp; Rise</h1>
+      <p class="subtitle">Tend what grows. Tend yourself.</p>
+    </header>
+
+    <!-- Today -->
+    <section class="panel today">
+      <h2>Today</h2>
+      <div id="today-list" class="plant-list"></div>
+    </section>
+
+    <!-- Root & Rise card -->
+    <section class="panel card-panel">
+      <img
+        src="./root-rise-card.png"
+        alt="Root & Rise card"
+        class="root-rise-card"
+      />
+      <div id="affirmation" class="affirmation"></div>
+    </section>
+
+    <!-- Plants -->
+    <section class="panel plants">
+      <h2>Plants</h2>
+      <div id="plants" class="plant-grid"></div>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script src="./app.js" defer></script>
+</body>
+</html>
