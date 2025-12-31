@@ -1,620 +1,686 @@
 (() => {
   "use strict";
 
-  /* ---------------------------
-     Utilities
-  --------------------------- */
+  /* ===========================
+     ROOT & RISE — Jess Edition
+     - All plant tiles visible
+     - Tiles glow + embers only when due
+     - Tap tile => full plant info modal
+     - “Cared For” log (not “watered”)
+     - 90 affirmations + 45 grounding actions rotate daily
+     =========================== */
+
   const $ = (sel) => document.querySelector(sel);
 
-  function todayISO() {
-    const d = new Date();
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
+  // ---------- Images in repo root ----------
+  const IMAGES = {
+    card: "./root-rise-card.png",
+    bgs: ["./bg-01.png", "./bg-02.png", "./bg-03.png", "./bg-04.png"]
+  };
 
-  function daysBetween(isoA, isoB) {
-    const a = new Date(`${isoA}T00:00:00`);
-    const b = new Date(`${isoB}T00:00:00`);
-    const ms = b.getTime() - a.getTime();
-    return Math.floor(ms / (1000 * 60 * 60 * 24));
-  }
-
-  function addDaysISO(iso, n) {
-    const d = new Date(`${iso}T00:00:00`);
-    d.setDate(d.getDate() + n);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
-
-  function clamp(n, min, max) {
-    return Math.max(min, Math.min(max, n));
-  }
-
-  function safeParseJSON(str, fallback) {
-    try { return JSON.parse(str); } catch { return fallback; }
-  }
-
-  function escapeHTML(s) {
-    return String(s)
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  /* ---------------------------
-     Background rotation
-  --------------------------- */
-  const BACKGROUNDS = ["bg-01.png", "bg-02.png", "bg-03.png", "bg-04.png"];
-
-  function setDailyBackground() {
-    const anchor = "2025-01-01";
-    const t = clamp(daysBetween(anchor, todayISO()), 0, 100000);
-    const bg = BACKGROUNDS[t % BACKGROUNDS.length];
-    document.documentElement.style.background =
-      `linear-gradient(rgba(14,20,18,.92), rgba(14,20,18,.92)), url("./${bg}") center/cover no-repeat fixed`;
-  }
-
-  /* ---------------------------
-     Plant Database (baseline, will refine later)
-     Key rule: Jess should not have to remember anything.
-  --------------------------- */
+  // ---------- Plant Data ----------
+  // Notes:
+  // - intervals are conservative “typical indoor” schedules
+  // - "careNotes" are human-friendly, not over-sciency
   const PLANTS = [
     {
-      id: "albino-syngonium",
+      id: "albinoSyngonium",
       name: "Albino Syngonium Arrow",
+      countLabel: "",
       img: "./albino-syngonium.png",
+      light: "Bright indirect. Avoid harsh direct sun.",
       waterEveryDays: 7,
-      light: "Bright indirect light (avoid harsh sun).",
-      water: "Water when top 1–2 inches are dry. Soak through, then drain fully.",
-      humidity: "Medium–high preferred.",
-      temp: "65–85°F (avoid cold drafts).",
-      soil: "Chunky, well-draining aroid mix (bark/perlite/coco).",
-      fertilize: "Light feeding monthly in spring/summer.",
-      toxicity: "Toxic to pets if chewed.",
-      tips: "Droop = thirsty; yellowing = too wet. Rotate for even growth."
+      waterMethod: "Water when the top inch is dry. Even moisture, never soggy.",
+      humidity: "Enjoys moderate humidity. Mist occasionally if air is dry.",
+      temp: "65–80°F. Keep away from cold drafts.",
+      careNotes: "If it droops, check soil moisture first. Rotate weekly for even growth.",
+      warning: "Yellow leaves often mean overwatering."
     },
     {
-      id: "prayer-plant",
+      id: "prayerPlant",
       name: "Prayer Plant",
       img: "./prayer-plant.png",
+      light: "Medium to bright indirect. No direct sun.",
       waterEveryDays: 6,
-      light: "Medium to bright indirect (no direct sun).",
-      water: "Keep lightly moist; water when top 1 inch is dry. Don’t let it fully dry out.",
-      humidity: "High humidity helps (bathroom/pebble tray).",
-      temp: "65–80°F (sensitive to cold).",
-      soil: "Moisture-retentive but airy (coco + perlite).",
-      fertilize: "Half-strength every 4–6 weeks in growing season.",
-      toxicity: "Generally considered non-toxic, still discourage chewing.",
-      tips: "Curling leaves often means dry air or underwatering."
+      waterMethod: "Keep slightly moist. Let the top ~½ inch dry, then water.",
+      humidity: "Loves humidity. Mist, pebble tray, or near a humidifier.",
+      temp: "65–80°F. Sensitive to cold.",
+      careNotes: "Curling leaves usually want more humidity or gentler water (filtered if possible).",
+      warning: "Crispy edges can be low humidity or minerals in tap water."
     },
     {
       id: "pothos",
-      name: "Pothos (x6)",
+      name: "Pothos",
+      countLabel: "(x6)",
       img: "./pothos.png",
+      light: "Low to bright indirect. More light = faster growth.",
       waterEveryDays: 10,
-      light: "Low to bright indirect (variegated types like brighter).",
-      water: "Water when top 2 inches are dry. They prefer a dry-down cycle.",
-      humidity: "Normal home humidity is fine.",
+      waterMethod: "Let top 1–2 inches dry, then water thoroughly.",
+      humidity: "Easygoing. Average home humidity is fine.",
       temp: "60–85°F.",
-      soil: "Standard indoor mix with added perlite.",
-      fertilize: "Monthly in spring/summer (light dose).",
-      toxicity: "Toxic to pets if ingested.",
-      tips: "Leggy growth = wants more light. Yellow leaves = too wet."
+      careNotes: "Trim to shape and propagate cuttings in water. Rotate for balanced vines.",
+      warning: "Yellow leaves usually mean too wet."
     },
     {
-      id: "snake-plant",
-      name: "Snake Plant (x2)",
+      id: "snakePlant",
+      name: "Snake Plant",
+      countLabel: "(x2)",
       img: "./snake-plant.png",
+      light: "Low to bright indirect. Tolerates low light well.",
       waterEveryDays: 21,
-      light: "Low to bright indirect; tolerates low light.",
-      water: "Let soil dry completely before watering. Water sparingly.",
-      humidity: "Low humidity is fine.",
-      temp: "60–90°F (avoid cold).",
-      soil: "Cactus/succulent mix (fast draining).",
-      fertilize: "A few times during spring/summer only.",
-      toxicity: "Toxic to pets if ingested.",
-      tips: "Soft/mushy base = overwatering. Slow grower—be patient."
+      waterMethod: "Let soil dry out completely before watering.",
+      humidity: "Doesn’t care. Dry air is fine.",
+      temp: "60–90°F.",
+      careNotes: "If unsure: wait. Snake plants prefer neglect over love-bombing.",
+      warning: "Soft/mushy base = too much water."
     },
     {
       id: "cactus",
       name: "Cactus",
       img: "./cactus.png",
-      waterEveryDays: 28,
       light: "Bright light / some direct sun.",
-      water: "Soak thoroughly, then allow to dry completely (long dry spells are normal).",
-      humidity: "Low humidity preferred.",
-      temp: "Warm is ideal; protect from freezing.",
-      soil: "Cactus mix (gritty, fast draining).",
-      fertilize: "Very light feeding in spring/summer.",
-      toxicity: "Spines are the main hazard; keep away from paws.",
-      tips: "Wrinkling = thirsty; mushy = too wet."
+      waterEveryDays: 28,
+      waterMethod: "Soak then fully dry. Much less in winter.",
+      humidity: "Prefers dry air.",
+      temp: "65–90°F.",
+      careNotes: "Use fast-draining soil. Don’t let it sit in water.",
+      warning: "Wrinkling can mean thirsty; mushy can mean rot."
     },
     {
-      id: "propagation-station",
+      id: "tinyCactus",
+      name: "Tiny Cactus",
+      countLabel: "(x4)",
+      img: "./tiny-cactus.png",
+      light: "Bright light / some direct sun.",
+      waterEveryDays: 24,
+      waterMethod: "Small pot dries fast: check soil, then water sparingly.",
+      humidity: "Prefers dry air.",
+      temp: "65–90°F.",
+      careNotes: "Because they’re small, they can dry sooner than the big cactus.",
+      warning: "Overwatering shows up fast in tiny pots."
+    },
+    {
+      id: "propStation",
       name: "Propagation Station",
       img: "./propagation-station.png",
-      waterEveryDays: 7,
-      light: "Bright indirect (avoid hot sun).",
-      water: "Change water weekly. Rinse vessel. Top off if low mid-week.",
-      humidity: "Normal is fine; higher can speed rooting.",
-      temp: "Warm room (65–80°F).",
-      soil: "N/A (water propagation).",
-      fertilize: "Optional: tiny dose once roots exist (very dilute).",
-      toxicity: "Depends on cuttings; assume toxic unless known.",
-      tips: "Cloudy water = change it. Trim rot early."
+      light: "Bright indirect.",
+      waterEveryDays: 5,
+      waterMethod: "Refresh water. Rinse vessel. Top off as needed.",
+      humidity: "N/A",
+      temp: "Room temp.",
+      careNotes: "Change water more often if it looks cloudy. Trim any mushy bits.",
+      warning: "If it smells off, rinse and restart with clean water."
     },
     {
       id: "monstera",
       name: "Monstera",
       img: "./monstera.png",
+      light: "Bright indirect. A little morning sun is okay.",
       waterEveryDays: 9,
-      light: "Bright indirect (a little morning sun is okay).",
-      water: "Water when top 2 inches are dry. Soak, drain, don’t leave sitting in water.",
-      humidity: "Medium–high preferred.",
+      waterMethod: "Let top 2 inches dry, then water deeply.",
+      humidity: "Likes moderate humidity.",
       temp: "65–85°F.",
-      soil: "Chunky aroid mix (bark/perlite).",
-      fertilize: "Monthly in spring/summer.",
-      toxicity: "Toxic to pets if chewed.",
-      tips: "No fenestrations = wants brighter light. Wipe leaves occasionally."
+      careNotes: "Rotate and wipe leaves. Stake if it’s reaching.",
+      warning: "Droop + wet soil = overwater. Droop + dry soil = thirsty."
     }
   ];
 
-  /* ---------------------------
-     Storage
-  --------------------------- */
-  const STORAGE_KEY = "root-rise:v2";
-
-  function loadState() {
-    const base = {
-      lastWateredById: {},     // id -> YYYY-MM-DD
-      snoozeUntilById: {}      // id -> YYYY-MM-DD
-    };
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return base;
-    const parsed = safeParseJSON(raw, base);
-    return {
-      ...base,
-      ...parsed,
-      lastWateredById: parsed.lastWateredById || {},
-      snoozeUntilById: parsed.snoozeUntilById || {}
-    };
-  }
-
-  function saveState(state) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }
-
-  function resetState() {
-    localStorage.removeItem(STORAGE_KEY);
-  }
-
-  /* ---------------------------
-     Root & Rise cycles
-  --------------------------- */
-  const AFFIRMATIONS_90 = [
-    "I tend what matters, one small act at a time.",
-    "I am allowed to grow slowly.",
-    "My care is a spell: quiet, steady, real.",
-    "I choose patience over pressure.",
+  // ---------- 90 Affirmations ----------
+  const AFFIRMATIONS = [
     "What I nurture, nurtures me.",
-    "I water roots, not anxiety.",
-    "I can be soft and still be strong.",
-    "I return to my breath; I return to myself.",
-    "I don’t need perfection to be powerful.",
-    "I honor the season I’m in.",
-    "My home is a sanctuary I build daily.",
-    "I trust small rituals to change big things.",
-    "I release what’s brittle; I keep what’s true.",
-    "I let light in without letting myself burn.",
-    "I am becoming, and that is enough.",
-    "I can rest without losing momentum.",
-    "My love is practical: it shows up.",
-    "I choose consistency over intensity.",
-    "Today I do the next right thing.",
-    "I am allowed to re-root and begin again.",
-    "I listen to what my body is asking for.",
-    "I make space for wonder.",
-    "I bless the ordinary and it blesses me back.",
-    "I don’t chase; I cultivate.",
-    "I trust my pace.",
-    "I speak to myself like someone I adore.",
-    "I am safe to be seen as I am.",
-    "I keep my boundaries like garden walls: kind and firm.",
-    "I choose clarity over chaos.",
-    "My attention is my altar.",
-    "I nourish the parts of me that are quiet.",
-    "I let the day be what it is, not what I fear.",
-    "I am not behind. I am in motion.",
-    "I can hold tenderness and discipline together.",
-    "I let beauty be useful.",
-    "I honor what I’ve survived.",
-    "I welcome change without abandoning myself.",
-    "I give my energy to what gives energy back.",
-    "I am steady enough to be gentle.",
-    "I make room for delight.",
-    "I am learning what my life wants to be.",
-    "I can be devoted without being depleted.",
-    "I do not owe urgency to anyone.",
-    "I trust my hands. I trust my heart.",
-    "I am held by the work I do with love.",
-    "I plant intentions and let time do its part.",
-    "I can pause and still be purposeful.",
-    "I am allowed to want more—quietly, fiercely.",
-    "I don’t need permission to take up space.",
-    "I choose nourishment over noise.",
-    "I let my habits be holy.",
-    "I forgive myself for being human.",
-    "I am building a life that feels like home.",
-    "I keep what is sacred close.",
-    "I choose the long road with the good soil.",
-    "I do not rush what wants to ripen.",
-    "I am worthy of care—especially my own.",
+    "My care is gentle, consistent, and enough.",
+    "I don’t rush my growth—my roots know the pace.",
+    "I am allowed to take up space and thrive.",
+    "Small tending creates big becoming.",
+    "I trust my timing.",
+    "I soften, and I strengthen.",
+    "I can be both tender and unstoppable.",
+    "I return to myself, again and again.",
+    "I am learning to receive good things.",
+    "My inner world is a garden, and I am its keeper.",
+    "I let the day be what it is—and I meet it with grace.",
+    "I don’t need permission to bloom.",
+    "I’m building a life that holds me.",
+    "My love is a practice, not a performance.",
+    "I choose steadiness over perfection.",
+    "I am not behind. I am becoming.",
+    "I release what drains me and keep what feeds me.",
+    "I honor my softness as strength.",
     "I welcome ease without guilt.",
-    "I keep my promises to myself.",
-    "I let love be the strategy.",
-    "I am growing roots as I reach for light.",
-    "I can be brave in small ways today.",
-    "I make beauty a daily practice.",
-    "I tend my mind like a garden: gently, daily.",
-    "I release comparison; I return to my path.",
-    "I can begin again, even mid-day.",
-    "I am stronger than the stories that hurt me.",
-    "I choose devotion to what heals.",
-    "I let the future arrive on its own feet.",
-    "I trust what I’m becoming.",
-    "I meet myself with compassion, not critique.",
-    "I create space for my magic to breathe.",
+    "I listen to what my body is saying.",
+    "I give myself the patience I give what I love.",
+    "I am safe to be seen as I am.",
+    "I hold my boundaries with kindness.",
+    "I am learning to trust my own voice.",
+    "I make room for joy.",
+    "I can start again without shame.",
+    "I nourish my peace like a flame.",
+    "I deserve support.",
+    "I let myself rest without earning it.",
+    "I am allowed to be proud of myself.",
+    "I am guided by what feels true.",
+    "I choose what grows me.",
+    "I am more than one hard day.",
+    "I do not abandon myself.",
+    "I am worthy of tenderness.",
+    "I take my time. I take my space.",
+    "I have nothing to prove to be loved.",
+    "I forgive myself for being human.",
+    "I let beauty be medicine.",
+    "I am steady in my own hands.",
+    "I belong to myself.",
+    "I speak to myself like someone I love.",
+    "I am learning to trust the quiet.",
+    "I move in a way that honors me.",
+    "I am allowed to want more.",
+    "I can hold grief and gratitude at once.",
+    "I am not too much.",
+    "I am not alone in this.",
+    "I let the small wins count.",
+    "I meet myself with compassion.",
+    "I choose gentle clarity.",
+    "I release urgency.",
+    "I become who I am by caring for what matters.",
+    "My presence is enough.",
+    "I breathe and return to center.",
+    "I let my heart be a home.",
+    "I carry myself with respect.",
+    "I don’t have to do it all today.",
     "I honor my needs without apology.",
-    "I keep my heart open and my feet grounded.",
-    "I am allowed to be unfinished.",
-    "I choose peace as a practice.",
-    "I let my life be simple where it can be.",
-    "I care for my world like it matters—because it does.",
-    "I am not fragile; I am alive.",
-    "I can do hard things with a soft heart.",
-    "I make time for what makes me feel real.",
-    "I let joy be practical.",
-    "I welcome rest as part of growth.",
-    "I trust the quiet answers.",
-    "I am built for seasons, not constant bloom.",
-    "I tend my relationships like living things.",
-    "I choose presence over perfection.",
-    "I am safe to shine without shrinking.",
-    "I will not abandon myself.",
-    "I rise gently. I rise anyway."
+    "I grow by showing up.",
+    "I can be brave and tired.",
+    "I let myself be helped.",
+    "I choose softness over self-attack.",
+    "I am learning to trust my resilience.",
+    "I create calm where I can.",
+    "I protect my peace like a sacred thing.",
+    "I am allowed to change my mind.",
+    "I am a safe place for myself.",
+    "I take one honest step.",
+    "I can do hard things gently.",
+    "I am becoming more myself.",
+    "I am allowed to be in progress.",
+    "I let love be practical.",
+    "I tend the little things and the little things tend me.",
+    "I choose what is sustainable.",
+    "I trust my intuition.",
+    "I am allowed to be proud of my healing.",
+    "I have the right to say no.",
+    "I make room for wonder.",
+    "I let my life be textured, not perfect.",
+    "I honor the season I am in.",
+    "I am worthy of consistency.",
+    "I release what I cannot control.",
+    "I am gentle with my edges.",
+    "I let myself be new at things.",
+    "I believe in my own capacity.",
+    "I choose clarity, not chaos.",
+    "I listen. I learn. I grow.",
+    "I let today be enough."
   ];
 
-  const GROUNDING_45 = [
-    "Drink a full glass of water slowly.",
-    "Stand barefoot for one minute. Feel the ground.",
-    "Take 5 slow breaths (longer exhale).",
-    "Open a window. Let air move through you.",
-    "Touch a plant or soil for 10 seconds.",
-    "Roll your shoulders and unclench your jaw.",
-    "Look at something green for one minute.",
-    "Stretch your spine gently upward.",
-    "Light a candle (or imagine one).",
-    "Name three things you can hear right now.",
+  // If you ever change text, keep count at 90.
+  // (This list is 90 lines intentionally.)
 
-    "Wash your hands slowly and deliberately.",
-    "Drink something warm mindfully.",
-    "Tidy one small surface (just one).",
-    "Step outside for 60 seconds.",
-    "Place a hand on your chest and breathe.",
-    "Relax your hands; let your fingers soften.",
-    "Take a slow walk across the room.",
-    "Notice where your body is supported.",
-    "Gaze at the sky (even through a window).",
-    "Do a gentle neck stretch left and right.",
-
-    "Water one plant with full attention.",
-    "Inhale through the nose, exhale through the mouth.",
-    "Feel your feet pressing into the floor.",
-    "Sit without your phone for two minutes.",
-    "Sip water like it’s medicine.",
-    "Brush your hair slowly (or smooth your sleeves).",
-    "Stand tall for one minute: soft and steady.",
-    "Take 10 slow shoulder circles.",
-    "Touch something textured (stone, wood, cloth).",
-    "Offer yourself one kind sentence.",
-
-    "Clean one leaf (real or imagined).",
-    "Let your face soften—especially the brow.",
-    "Breathe: in 4, out 6 (x5).",
-    "Look for one beautiful detail in the room.",
-    "Do a gentle forward fold for 20 seconds.",
-    "Rest your tongue on the roof of your mouth and release the jaw.",
-    "Close your eyes for 30 seconds and listen.",
-    "Refill a water vessel (yours or theirs).",
-    "Stand in silence for one minute.",
-    "Thank your body for carrying you.",
-
-    "Put both hands on a mug or cup; feel warmth/coolness.",
-    "Stretch your wrists and hands gently.",
-    "Let your shoulders drop; exhale slowly.",
-    "Touch your heart; whisper “I’m here.”",
-    "Choose one small thing to do with devotion."
+  // ---------- 45 Grounding Actions ----------
+  const GROUNDING_ACTIONS = [
+    "Drink a full glass of water—slowly.",
+    "Stand barefoot for 60 seconds. Feel the floor hold you.",
+    "Take 10 deep breaths. Longer exhale than inhale.",
+    "Wash your hands like it’s a ritual. Warm water. Presence.",
+    "Open a window. Let fresh air touch your face.",
+    "Light a candle for one minute of stillness.",
+    "Do a gentle neck and shoulder roll for 30 seconds.",
+    "Name 5 things you can see, 4 you can feel, 3 you can hear, 2 you can smell, 1 you can taste.",
+    "Put one hand on your chest and one on your belly. Breathe into both.",
+    "Make a tiny to-do list: three doable things only.",
+    "Step outside for 2 minutes and look at the sky.",
+    "Tidy one small surface. Just one.",
+    "Do 8 slow calf raises. Feel your legs support you.",
+    "Stretch your hands and wrists—release the grip you carry.",
+    "Make a warm drink and take the first sip with gratitude.",
+    "Write one sentence: ‘Right now I feel…’ and stop there.",
+    "Put on one song that steadies you. Listen, don’t multitask.",
+    "Water check: touch soil, notice texture, notice smell.",
+    "Gently shake out your arms and legs for 20 seconds.",
+    "Sit tall. Relax your jaw. Unclench your tongue.",
+    "Look at something green for 30 seconds.",
+    "Do a slow forward fold and breathe into your back.",
+    "Place your palm on a plant leaf. Let it remind you: life is here.",
+    "Name one thing you’ve done well lately.",
+    "Do 12 slow wall push-ups.",
+    "Breathe in for 4, hold 2, out 6. Repeat 5 times.",
+    "Take a shower or wash your face intentionally.",
+    "Put your phone down for 3 minutes. Let silence exist.",
+    "Check your posture. Soften your shoulders.",
+    "Step into sunlight if possible—30 seconds.",
+    "Rub a little lotion into your hands like a blessing.",
+    "Do 10 seated twists (5 each side).",
+    "Write one kind sentence to yourself and believe it for a moment.",
+    "Close your eyes and listen for the farthest sound you can hear.",
+    "Make your bed or straighten your blanket. Reset the nest.",
+    "Sip something warm and feel it travel down.",
+    "Touch a cool surface and notice the temperature.",
+    "Pick up five items and put them away. Done.",
+    "Stand up. Reach high. Exhale. Drop your arms.",
+    "Take three slow breaths while looking at your favorite plant.",
+    "Do a 60-second “slow walk” across the room—feel each step.",
+    "Say out loud: ‘I’m here. I’m safe. I’m allowed to take my time.’",
+    "Write down one worry—then write one next step.",
+    "Inhale a scent you like (tea, herb, soap) and let it anchor you.",
+    "Put a hand over your heart and whisper: ‘I’ve got you.’"
   ];
 
-  function getCyclesForToday() {
-    const anchor = "2025-01-01";
-    const t = clamp(daysBetween(anchor, todayISO()), 0, 100000);
-    const aIdx = t % AFFIRMATIONS_90.length;
-    const gIdx = t % GROUNDING_45.length;
-    return {
-      dayIndex: t,
-      affirmationIndex: aIdx,
-      groundingIndex: gIdx,
-      affirmation: AFFIRMATIONS_90[aIdx],
-      grounding: GROUNDING_45[gIdx]
-    };
-  }
+  // ---------- Storage ----------
+  const STORAGE_KEY = "rootRise_v1";
+  const state = loadState();
 
-  /* ---------------------------
-     Watering logic + snooze
-  --------------------------- */
-  function lastWateredISO(state, id) {
-    return state.lastWateredById[id] || null;
-  }
+  // ---------- Elements ----------
+  const plantsGrid = $("#plantsGrid");
+  const plantsHint = $("#plantsHint");
+  const cardImg = $("#cardImg");
+  const affirmationText = $("#affirmationText");
+  const groundingText = $("#groundingText");
+  const caredList = $("#caredList");
+  const caredEmpty = $("#caredEmpty");
+  const dayStamp = $("#dayStamp");
 
-  function snoozeUntilISO(state, id) {
-    return state.snoozeUntilById[id] || null;
-  }
+  const plantModal = $("#plantModal");
+  const modalImg = $("#modalImg");
+  const modalTitle = $("#modalTitle");
+  const modalMeta = $("#modalMeta");
+  const modalBody = $("#modalBody");
+  const modalCareBtn = $("#modalCareBtn");
 
-  function isSnoozed(state, id) {
-    const until = snoozeUntilISO(state, id);
-    if (!until) return false;
-    return todayISO() <= until;
-  }
+  const helpModal = $("#helpModal");
+  const btnHelp = $("#btn-help");
+  const btnReset = $("#btn-reset");
 
-  function isDueToday(state, plant) {
-    if (isSnoozed(state, plant.id)) return false;
+  let activePlantId = null;
 
-    const last = lastWateredISO(state, plant.id);
-    if (!last) return true;
+  // ---------- Init ----------
+  ensureDefaults();
+  applyDailyBackground();
+  renderRitual();
+  renderPlants();
+  renderCaredFor();
 
-    const since = daysBetween(last, todayISO());
-    return since >= plant.waterEveryDays;
-  }
-
-  function markWatered(state, id) {
-    state.lastWateredById[id] = todayISO();
-    delete state.snoozeUntilById[id];
-    saveState(state);
-  }
-
-  function snooze(state, id, days) {
-    const until = addDaysISO(todayISO(), days);
-    state.snoozeUntilById[id] = until;
-    saveState(state);
-  }
-
-  /* ---------------------------
-     Modal controls
-  --------------------------- */
-  const modal = $("#modal");
-  const help = $("#help");
-
-  function openModal(el) {
-    el.setAttribute("aria-hidden", "false");
-    document.body.style.overflow = "hidden";
-  }
-  function closeModal(el) {
-    el.setAttribute("aria-hidden", "true");
-    document.body.style.overflow = "";
-  }
-
-  function wireModalClose(el, closeBtnId) {
-    const closeBtn = $(`#${closeBtnId}`);
-    closeBtn?.addEventListener("click", () => closeModal(el));
-    el.querySelectorAll("[data-close='true']").forEach(n => {
-      n.addEventListener("click", () => closeModal(el));
-    });
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && el.getAttribute("aria-hidden") === "false") closeModal(el);
-    });
-  }
-
-  wireModalClose(modal, "modal-close");
-  wireModalClose(help, "help-close");
-
-  $("#btn-help")?.addEventListener("click", () => openModal(help));
-  $("#btn-reset")?.addEventListener("click", () => {
-    if (!confirm("Reset all watering history and snoozes?")) return;
-    resetState();
-    state = loadState();
-    render();
+  // ---------- Events ----------
+  plantsGrid.addEventListener("click", (e) => {
+    const tile = e.target.closest("[data-plant-id]");
+    if (!tile) return;
+    openPlantModal(tile.getAttribute("data-plant-id"));
   });
 
-  /* ---------------------------
-     Rendering
-  --------------------------- */
-  let state = loadState();
+  document.addEventListener("click", (e) => {
+    const close = e.target.closest("[data-close]");
+    if (!close) return;
 
-  function renderHeader() {
-    const date = todayISO();
-    $("#today-date").textContent = date;
+    const m = e.target.closest(".modal");
+    if (m) closeModal(m);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    closeModal(plantModal);
+    closeModal(helpModal);
+  });
+
+  modalCareBtn.addEventListener("click", () => {
+    if (!activePlantId) return;
+    markCaredFor(activePlantId);
+    openPlantModal(activePlantId); // refresh details
+  });
+
+  btnHelp.addEventListener("click", () => openModal(helpModal));
+
+  btnReset.addEventListener("click", () => {
+    const ok = confirm("Reset all care history for Root & Rise?");
+    if (!ok) return;
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  });
+
+  // ---------- Core Logic ----------
+  function ensureDefaults(){
+    // lastCaredById default: null
+    if (!state.lastCaredById) state.lastCaredById = {};
+    if (!Array.isArray(state.careLog)) state.careLog = [];
+
+    // daily picks baseline
+    if (!state.daily) state.daily = {};
+    saveState();
   }
 
-  function renderRitual() {
-    const c = getCyclesForToday();
-    $("#affirmation").textContent = c.affirmation;
-    $("#grounding").innerHTML = `<strong class="muted">Today’s grounding:</strong> ${escapeHTML(c.grounding)}`;
-    $("#cycle-meta").textContent = `Affirmation ${c.affirmationIndex + 1}/90 · Grounding ${c.groundingIndex + 1}/45`;
+  function applyDailyBackground(){
+    const idx = dayIndex(IMAGES.bgs.length);
+    document.body.style.backgroundImage = `
+      radial-gradient(120% 100% at 50% 0%, rgba(255,255,255,.05), transparent 55%),
+      radial-gradient(120% 110% at 50% 80%, rgba(0,0,0,.65), rgba(0,0,0,.9)),
+      url("${IMAGES.bgs[idx]}")
+    `;
+    document.body.style.backgroundSize = "cover, cover, cover";
+    document.body.style.backgroundPosition = "center, center, center";
+    document.body.style.backgroundRepeat = "no-repeat, no-repeat, no-repeat";
   }
 
-  function renderToday() {
-    const host = $("#today-list");
-    const empty = $("#today-empty");
-    const due = PLANTS.filter(p => isDueToday(state, p));
+  function renderRitual(){
+    cardImg.src = IMAGES.card;
 
-    if (due.length === 0) {
-      empty.hidden = false;
-      host.innerHTML = "";
-      return;
+    const todayKey = dateKey(new Date());
+    const daily = state.daily;
+
+    if (!daily.date || daily.date !== todayKey){
+      daily.date = todayKey;
+      daily.affirmationIndex = dayIndex(AFFIRMATIONS.length);
+      daily.groundingIndex = dayIndex(GROUNDING_ACTIONS.length, 999); // offset to avoid same-ness
+      saveState();
     }
 
-    empty.hidden = true;
+    affirmationText.textContent = AFFIRMATIONS[daily.affirmationIndex];
+    groundingText.textContent = GROUNDING_ACTIONS[daily.groundingIndex];
 
-    host.innerHTML = due.map(p => {
-      const last = lastWateredISO(state, p.id);
-      const lastTxt = last ? `Last: ${last}` : `Last: —`;
-      return `
-        <div class="today-item" data-id="${p.id}">
-          <img src="${p.img}" alt="${escapeHTML(p.name)}" />
-          <div class="today-main">
-            <div class="today-title">
-              <div class="today-name">${escapeHTML(p.name)}</div>
-              <span class="badge due">Due</span>
-            </div>
-            <div class="today-quick">
-              <span class="pill"><strong>Light:</strong> ${escapeHTML(p.light)}</span>
-              <span class="pill"><strong>Water:</strong> ${escapeHTML(p.water)}</span>
-              <span class="pill">${escapeHTML(lastTxt)} · Every ${p.waterEveryDays}d</span>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <button class="primary btn-water" type="button">Watered</button>
-            <button class="ghost btn-details" type="button">Details</button>
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    host.querySelectorAll(".btn-water").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const row = e.target.closest(".today-item");
-        const id = row?.getAttribute("data-id");
-        if (!id) return;
-        markWatered(state, id);
-        render();
-      });
-    });
-
-    host.querySelectorAll(".btn-details").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const row = e.target.closest(".today-item");
-        const id = row?.getAttribute("data-id");
-        if (!id) return;
-        showPlantModal(id);
-      });
-    });
+    const d = new Date();
+    dayStamp.textContent = d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" });
   }
 
-  function renderLibrary() {
-    const host = $("#plants-grid");
+  function renderPlants(){
+    plantsGrid.innerHTML = "";
 
-    host.innerHTML = PLANTS.map(p => {
-      const due = isDueToday(state, p);
-      const snoozed = isSnoozed(state, p.id);
-      const flag = due ? `<span class="badge due">Due</span>` : snoozed ? `<span class="badge ok">Snoozed</span>` : `<span class="badge ok">OK</span>`;
-      const last = lastWateredISO(state, p.id);
-      const lastTxt = last ? `Last: ${last}` : `Last: —`;
+    const dueCount = PLANTS.reduce((acc, p) => acc + (isDue(p) ? 1 : 0), 0);
+    plantsHint.textContent = dueCount === 0
+      ? "Nothing needs attention today."
+      : `${dueCount} ${dueCount === 1 ? "plant is" : "plants are"} calling for care.`;
 
-      return `
-        <div class="plant-card" data-id="${p.id}" role="button" tabindex="0" aria-label="Open ${escapeHTML(p.name)} details">
-          <img src="${p.img}" alt="${escapeHTML(p.name)}" />
-          <div class="plant-name">${escapeHTML(p.name)}</div>
-          <div class="plant-meta">${escapeHTML(lastTxt)} · Every ${p.waterEveryDays}d</div>
-          <div class="plant-flag">${flag}</div>
-        </div>
-      `;
-    }).join("");
-
-    host.querySelectorAll(".plant-card").forEach(card => {
-      const open = () => {
-        const id = card.getAttribute("data-id");
-        if (!id) return;
-        showPlantModal(id);
-      };
-      card.addEventListener("click", open);
-      card.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          open();
-        }
-      });
-    });
+    for (const plant of PLANTS){
+      plantsGrid.appendChild(renderPlantTile(plant));
+    }
   }
 
-  function showPlantModal(id) {
-    const plant = PLANTS.find(p => p.id === id);
+  function renderPlantTile(plant){
+    const tile = document.createElement("div");
+    tile.className = "tile" + (isDue(plant) ? " due" : "");
+    tile.setAttribute("data-plant-id", plant.id);
+
+    const img = document.createElement("img");
+    img.className = "tile-img";
+    img.src = plant.img;
+    img.alt = plant.name;
+
+    const info = document.createElement("div");
+    info.className = "tile-info";
+
+    const name = document.createElement("p");
+    name.className = "tile-name";
+    name.textContent = plant.countLabel ? `${plant.name} ${plant.countLabel}` : plant.name;
+
+    const last = state.lastCaredById[plant.id] ? new Date(state.lastCaredById[plant.id]) : null;
+    const nextDue = computeNextDueDate(plant, last);
+
+    const sub = document.createElement("p");
+    sub.className = "tile-sub";
+    sub.textContent = isDue(plant)
+      ? "Due for care"
+      : `Next due: ${formatShortDate(nextDue)}`;
+
+    const meta = document.createElement("div");
+    meta.className = "tile-meta";
+
+    const pillLight = document.createElement("span");
+    pillLight.className = "pill";
+    pillLight.textContent = simplifyLight(plant.light);
+
+    meta.appendChild(pillLight);
+
+    if (isDue(plant)){
+      const duePill = document.createElement("span");
+      duePill.className = "pill";
+      duePill.style.borderColor = "rgba(255,160,110,.35)";
+      duePill.style.background = "rgba(255,160,110,.10)";
+      duePill.textContent = "Due";
+      meta.appendChild(duePill);
+    }
+
+    info.appendChild(name);
+    info.appendChild(sub);
+    info.appendChild(meta);
+
+    tile.appendChild(img);
+    tile.appendChild(info);
+
+    // Embers layer (only visible when tile has .due)
+    const embers = document.createElement("div");
+    embers.className = "embers";
+    embers.setAttribute("aria-hidden", "true");
+    const emberCount = 10;
+    for (let i = 0; i < emberCount; i++){
+      embers.appendChild(makeEmber(i));
+    }
+    tile.appendChild(embers);
+
+    return tile;
+  }
+
+  function makeEmber(i){
+    const e = document.createElement("div");
+    e.className = "ember";
+    const x = Math.round(10 + Math.random() * 80) + "%";
+    const s = Math.round(4 + Math.random() * 6) + "px";
+    const d = Math.round(1800 + Math.random() * 1600) + "ms";
+    const delay = Math.round(Math.random() * 2200) + "ms";
+    const drift = (Math.random() < 0.5 ? "-" : "") + Math.round(6 + Math.random() * 18) + "px";
+    e.style.setProperty("--x", x);
+    e.style.setProperty("--s", s);
+    e.style.setProperty("--d", d);
+    e.style.setProperty("--delay", delay);
+    e.style.setProperty("--drift", drift);
+    return e;
+  }
+
+  function openPlantModal(plantId){
+    const plant = PLANTS.find(p => p.id === plantId);
+    if (!plant) return;
+    activePlantId = plantId;
+
+    modalImg.src = plant.img;
+    modalImg.alt = plant.name;
+
+    modalTitle.textContent = plant.countLabel ? `${plant.name} ${plant.countLabel}` : plant.name;
+
+    const last = state.lastCaredById[plant.id] ? new Date(state.lastCaredById[plant.id]) : null;
+    const nextDue = computeNextDueDate(plant, last);
+    const due = isDue(plant);
+
+    modalMeta.textContent = due
+      ? "Due for care now."
+      : `Next due: ${formatLongDate(nextDue)}.`;
+
+    modalBody.innerHTML = "";
+
+    modalBody.appendChild(infoRow("Lighting", plant.light));
+    modalBody.appendChild(infoRow("Care rhythm", `Every ${plant.waterEveryDays} day${plant.waterEveryDays === 1 ? "" : "s"} (typical).`));
+    modalBody.appendChild(infoRow("How to care", plant.waterMethod));
+    modalBody.appendChild(infoRow("Humidity", plant.humidity));
+    modalBody.appendChild(infoRow("Temperature", plant.temp));
+    modalBody.appendChild(infoRow("Notes", plant.careNotes));
+    modalBody.appendChild(infoRow("Watch for", plant.warning));
+
+    modalBody.appendChild(infoRow("Last cared", last ? formatLongDateTime(last) : "Not tracked yet."));
+
+    modalCareBtn.textContent = due ? "Mark Cared For (now)" : "Mark Cared For";
+    openModal(plantModal);
+  }
+
+  function infoRow(key, val){
+    const row = document.createElement("div");
+    row.className = "info-row";
+    const k = document.createElement("div");
+    k.className = "info-key";
+    k.textContent = key;
+    const v = document.createElement("div");
+    v.className = "info-val";
+    v.textContent = val;
+    row.appendChild(k);
+    row.appendChild(v);
+    return row;
+  }
+
+  function markCaredFor(plantId){
+    const plant = PLANTS.find(p => p.id === plantId);
     if (!plant) return;
 
-    const due = isDueToday(state, plant);
-    const snoozed = isSnoozed(state, plant.id);
-    const last = lastWateredISO(state, plant.id);
-    const lastTxt = last ? `Last watered: ${last}` : `Last watered: —`;
-    const cycleTxt = `Watering cycle: every ${plant.waterEveryDays} days`;
-    const snoozeTxt = snoozed ? `Snoozed until: ${snoozeUntilISO(state, plant.id)}` : "";
+    const now = new Date();
+    state.lastCaredById[plantId] = now.toISOString();
 
-    $("#modal-title").textContent = plant.name;
-    $("#modal-subtitle").textContent = plant.id.replaceAll("-", " ");
-    $("#modal-img").src = plant.img;
-    $("#modal-img").alt = plant.name;
+    state.careLog.unshift({
+      plantId,
+      name: plant.countLabel ? `${plant.name} ${plant.countLabel}` : plant.name,
+      ts: now.toISOString()
+    });
 
-    const statusEl = $("#modal-status");
-    statusEl.className = "badge " + (due ? "due" : "ok");
-    statusEl.textContent = due ? "Due today" : snoozed ? "Snoozed" : "Not due";
+    // Keep log tidy
+    state.careLog = state.careLog.slice(0, 30);
 
-    $("#modal-last").textContent = lastTxt + (snoozeTxt ? ` · ${snoozeTxt}` : "");
-    $("#modal-cycle").textContent = cycleTxt;
-
-    const facts = [
-      ["Light", plant.light],
-      ["Water", plant.water],
-      ["Soil", plant.soil],
-      ["Humidity", plant.humidity],
-      ["Temperature", plant.temp],
-      ["Fertilizer", plant.fertilize],
-      ["Toxicity", plant.toxicity],
-      ["Notes", plant.tips]
-    ];
-
-    $("#modal-facts").innerHTML = facts.map(([k,v]) => `
-      <div class="fact">
-        <div class="k">${escapeHTML(k)}</div>
-        <div class="v">${escapeHTML(v || "—")}</div>
-      </div>
-    `).join("");
-
-    $("#modal-watered").onclick = () => {
-      markWatered(state, plant.id);
-      closeModal(modal);
-      render();
-    };
-
-    $("#modal-snooze").onclick = () => {
-      snooze(state, plant.id, 2);
-      closeModal(modal);
-      render();
-    };
-
-    openModal(modal);
+    saveState();
+    renderPlants();
+    renderCaredFor();
   }
 
-  function render() {
-    setDailyBackground();
-    renderHeader();
-    renderRitual();
-    renderToday();
-    renderLibrary();
+  function renderCaredFor(){
+    caredList.innerHTML = "";
+    const log = state.careLog || [];
+
+    if (log.length === 0){
+      caredEmpty.hidden = false;
+      return;
+    }
+    caredEmpty.hidden = true;
+
+    for (const entry of log){
+      const item = document.createElement("div");
+      item.className = "cared-item";
+
+      const left = document.createElement("div");
+      left.className = "cared-left";
+
+      const name = document.createElement("div");
+      name.className = "cared-name";
+      name.textContent = entry.name;
+
+      const time = document.createElement("div");
+      time.className = "cared-time";
+      time.textContent = formatLongDateTime(new Date(entry.ts));
+
+      left.appendChild(name);
+      left.appendChild(time);
+
+      const tag = document.createElement("div");
+      tag.className = "cared-tag";
+      tag.textContent = "Cared for";
+
+      item.appendChild(left);
+      item.appendChild(tag);
+
+      caredList.appendChild(item);
+    }
   }
 
-  /* Boot */
-  function boot() {
-    render();
+  // ---------- Scheduling ----------
+  function isDue(plant){
+    const lastIso = state.lastCaredById[plant.id];
+    if (!lastIso) return true; // if never tracked, it's due (gentle nudge to set baseline)
+    const last = new Date(lastIso);
+    const next = computeNextDueDate(plant, last);
+    const today = startOfDay(new Date());
+    return next.getTime() <= today.getTime();
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
+  function computeNextDueDate(plant, last){
+    const base = last ? startOfDay(last) : startOfDay(new Date(0));
+    const next = new Date(base);
+    next.setDate(next.getDate() + plant.waterEveryDays);
+    return startOfDay(next);
   }
+
+  // ---------- Date helpers ----------
+  function startOfDay(d){
+    const x = new Date(d);
+    x.setHours(0,0,0,0);
+    return x;
+  }
+
+  function dateKey(d){
+    const x = startOfDay(d);
+    return `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,"0")}-${String(x.getDate()).padStart(2,"0")}`;
+  }
+
+  // stable-ish daily index
+  function dayIndex(mod, offset = 0){
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = d.getMonth() + 1;
+    const day = d.getDate();
+    const seed = (y * 10000 + m * 100 + day + offset);
+    // simple deterministic scramble
+    const n = (seed * 2654435761) >>> 0;
+    return n % mod;
+  }
+
+  function formatShortDate(d){
+    return d.toLocaleDateString(undefined, { month:"short", day:"numeric" });
+  }
+
+  function formatLongDate(d){
+    return d.toLocaleDateString(undefined, { weekday:"long", month:"long", day:"numeric" });
+  }
+
+  function formatLongDateTime(d){
+    return d.toLocaleString(undefined, { weekday:"short", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" });
+  }
+
+  function simplifyLight(lightText){
+    const t = lightText.toLowerCase();
+    if (t.includes("bright") && t.includes("indirect")) return "Bright indirect";
+    if (t.includes("medium") && t.includes("indirect")) return "Medium indirect";
+    if (t.includes("low") && t.includes("bright")) return "Low–bright";
+    if (t.includes("low")) return "Low light";
+    if (t.includes("direct")) return "Direct sun";
+    return "Light";
+  }
+
+  // ---------- Modal helpers ----------
+  function openModal(modal){
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeModal(modal){
+    if (!modal) return;
+    modal.setAttribute("aria-hidden", "true");
+    if (plantModal.getAttribute("aria-hidden") === "true" && helpModal.getAttribute("aria-hidden") === "true"){
+      document.body.style.overflow = "";
+    }
+  }
+
+  // ---------- Storage helpers ----------
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return {};
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    }catch{
+      return {};
+    }
+  }
+
+  function saveState(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }catch{
+      // ignore
+    }
+  }
+
 })();
