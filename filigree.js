@@ -1,46 +1,67 @@
-/* filigree.js — Root & Rise
+/* filigree.js — Root & Rise (SAFE LAYERED)
    Subtle animated filigree haze in the corners (canvas overlay).
-   - Non-interactive (won’t block clicks)
+   - Never blocks clicks
+   - Always renders BEHIND the app UI (fixes “missing text”)
    - Respects prefers-reduced-motion
-   - Auto-resizes
+   - Auto-resizes, DPI aware, lightweight
 */
 
 (() => {
   "use strict";
 
   const CFG = {
-    opacity: 0.20,     // overall visibility (0.0–0.6)
-    blur: 10,          // canvas blur in px
-    speed: 0.25,       // animation speed (0–1)
+    opacity: 0.22,     // visibility (0.0–0.6)
+    blur: 10,          // px
+    speed: 0.22,       // 0–1
     density: 1.0,      // 0.5–2.0
-    vignette: 0.35     // dark edge shading (0–0.8)
+    vignette: 0.32     // 0–0.8
   };
 
   const reduced = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
 
+  function ensureLayering() {
+    // Create a dedicated background layer container with strict stacking.
+    let layer = document.getElementById("rrFXLayer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.id = "rrFXLayer";
+      Object.assign(layer.style, {
+        position: "fixed",
+        inset: "0",
+        pointerEvents: "none",
+        zIndex: "0" // FX layer sits at 0
+      });
+      document.body.prepend(layer);
+    }
+
+    // Force the app shell above it (so text/buttons never get covered)
+    const shell = document.querySelector(".rr-shell");
+    if (shell) {
+      const s = shell.style;
+      if (!s.position) s.position = "relative";
+      s.zIndex = "2";
+    }
+
+    // Some browsers behave better if body establishes a stacking context.
+    const b = document.body.style;
+    if (!b.position) b.position = "relative";
+    if (!b.isolation) b.isolation = "isolate";
+
+    return layer;
+  }
+
+  // Canvas
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d", { alpha: true });
 
   canvas.className = "rr-filigree-canvas";
   Object.assign(canvas.style, {
-    position: "fixed",
-    inset: "0",
     width: "100%",
     height: "100%",
-    pointerEvents: "none",
-    zIndex: "0",               // behind UI; your UI is normal flow above
+    display: "block",
     opacity: String(CFG.opacity),
     filter: `blur(${CFG.blur}px)`,
-    mixBlendMode: "screen"     // gentle glow on dark bg
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    document.body.prepend(canvas);
-    // Ensure body establishes stacking context for your content above
-    // (Most layouts already do; this is extra safety.)
-    if (getComputedStyle(document.body).position === "static") {
-      document.body.style.position = "relative";
-    }
+    mixBlendMode: "screen"
   });
 
   let w = 0, h = 0, dpr = 1;
@@ -49,15 +70,13 @@
     dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
     w = Math.floor(window.innerWidth);
     h = Math.floor(window.innerHeight);
+
     canvas.width = Math.floor(w * dpr);
     canvas.height = Math.floor(h * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
   window.addEventListener("resize", resize, { passive: true });
-  resize();
 
   // Deterministic-ish RNG
   function hash(n) {
@@ -74,7 +93,6 @@
     ctx.translate(x, y);
     ctx.rotate(spin);
 
-    // Gradient stroke: bone → pink → cool pearl
     const g = ctx.createLinearGradient(-r, -r, r, r);
     g.addColorStop(0, `rgba(255,245,230,${alpha})`);
     g.addColorStop(0.55, `rgba(255,170,225,${alpha * 0.9})`);
@@ -85,14 +103,12 @@
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
-    // Draw an ornate, looping curve
     ctx.beginPath();
     const steps = 140;
     for (let i = 0; i <= steps; i++) {
       const p = i / steps;
-      const a = p * Math.PI * 2.0;
+      const a = p * Math.PI * 2;
 
-      // Lissajous-ish swirl
       const k1 = 1.6 + 0.35 * Math.sin(t * 0.9);
       const k2 = 2.2 + 0.30 * Math.cos(t * 0.7);
 
@@ -105,14 +121,14 @@
     }
     ctx.stroke();
 
-    // Secondary tiny curls
+    // secondary curls
     ctx.globalAlpha *= 0.75;
     ctx.beginPath();
     const steps2 = 90;
     for (let i = 0; i <= steps2; i++) {
       const p = i / steps2;
-      const a = p * Math.PI * 2.0;
-      const rr = r * 0.32 * (0.75 + 0.25 * Math.cos(a * 3.0 + t));
+      const a = p * Math.PI * 2;
+      const rr = r * 0.32 * (0.75 + 0.25 * Math.cos(a * 3 + t));
       const xx = rr * Math.cos(a * 2.8 - t * 0.22);
       const yy = rr * Math.sin(a * 2.0 + t * 0.19);
       if (i === 0) ctx.moveTo(xx, yy);
@@ -126,7 +142,10 @@
   function drawVignette() {
     if (CFG.vignette <= 0) return;
     ctx.save();
-    const g = ctx.createRadialGradient(w/2, h/2, Math.min(w,h)*0.10, w/2, h/2, Math.max(w,h)*0.70);
+    const g = ctx.createRadialGradient(
+      w / 2, h / 2, Math.min(w, h) * 0.10,
+      w / 2, h / 2, Math.max(w, h) * 0.70
+    );
     g.addColorStop(0, "rgba(0,0,0,0)");
     g.addColorStop(1, `rgba(0,0,0,${CFG.vignette})`);
     ctx.fillStyle = g;
@@ -141,7 +160,6 @@
 
     ctx.clearRect(0, 0, w, h);
 
-    // Corner anchors (keep center mostly clear)
     const corners = [
       { x: w * 0.10, y: h * 0.18, s: 1.0 },
       { x: w * 0.90, y: h * 0.18, s: 0.95 },
@@ -150,19 +168,22 @@
     ];
 
     const base = Math.min(w, h);
-    const count = Math.round(6 * CFG.density);
+    const count = Math.max(3, Math.round(6 * CFG.density));
 
     for (let i = 0; i < corners.length; i++) {
       const c = corners[i];
       for (let j = 0; j < count; j++) {
         const seed = i * 1000 + j * 77;
+
         const jitterX = (hash(seed + 1) - 0.5) * base * 0.08;
         const jitterY = (hash(seed + 2) - 0.5) * base * 0.10;
 
         const r = base * (0.10 + 0.08 * hash(seed + 3)) * c.s;
-        const spin = (hash(seed + 4) - 0.5) * 0.8 + Math.sin(t * 0.35 + j) * 0.08;
+        const spin =
+          (hash(seed + 4) - 0.5) * 0.8 + Math.sin(t * 0.35 + j) * 0.08;
 
         const alpha = 0.22 + 0.18 * hash(seed + 5);
+
         filigreeStroke(
           c.x + jitterX + Math.sin(t * 0.25 + j) * base * 0.01,
           c.y + jitterY + Math.cos(t * 0.22 + j) * base * 0.012,
@@ -175,9 +196,13 @@
     }
 
     drawVignette();
-
     requestAnimationFrame(frame);
   }
 
-  requestAnimationFrame(frame);
+  document.addEventListener("DOMContentLoaded", () => {
+    const layer = ensureLayering();
+    layer.appendChild(canvas);
+    resize();
+    requestAnimationFrame(frame);
+  });
 })();
