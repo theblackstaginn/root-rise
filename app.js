@@ -1,16 +1,17 @@
-/* Root & Rise — app.js
-   - Vanilla JS, localStorage persistence
-   - Always show all plant tiles (no text)
-   - Glow + embers ONLY when due
-   - Click tile -> modal details + Mark Cared For
-   - Daily affirmation + grounding (90 / 45), deterministic by local date
+/* Root & Rise — app.js (RR-CSS MATCH, COHESIVE)
+   - Uses existing DOM from index.html
+   - Tiles: image-only, clickable
+     • glow + embers ONLY when due
+   - Modal: scrollable (CSS handles max-height + overflow)
+   - Background set via CSS var --bgUrl (NOT background-image override)
+   - localStorage persistence
 */
 
 (() => {
   "use strict";
 
   /* =========================
-     ASSETS (repo root)
+     CONFIG: Assets in REPO ROOT
      ========================= */
   const ASSETS = {
     bg: "bg-01.png",
@@ -22,12 +23,12 @@
       "cactus": "cactus.png",
       "propagation-station": "propagation-station.png",
       "monstera": "monstera.png",
-      "tiny-cactus": "tiny-cactus.png" // optional; fallback handled below
+      "tiny-cactus": "tiny-cactus.png" // optional; falls back to cactus if missing
     }
   };
 
   /* =========================
-     PLANTS
+     DATA: Plants + Care Guidance
      ========================= */
   const PLANTS = [
     {
@@ -38,8 +39,10 @@
       careIntervalDays: 7,
       careType: "Water (when top inch is dry)",
       lighting: "Bright, indirect light. Avoid harsh direct sun.",
-      wateringDetail: "Let the top ~1 inch of soil dry, then water thoroughly. Likes evenly moist soil but not soggy.",
-      notes: "Albino/variegated leaves need brighter indirect light to hold color. If it dries too hard, it sulks."
+      wateringDetail:
+        "Let the top ~1 inch of soil dry, then water thoroughly. Likes evenly moist soil but not soggy.",
+      notes:
+        "Albino/variegated leaves need brighter indirect light to hold color. If it dries too hard, it sulks."
     },
     {
       id: "prayer-plant",
@@ -49,8 +52,10 @@
       careIntervalDays: 6,
       careType: "Water (keep lightly moist)",
       lighting: "Medium to bright indirect light. No direct sun.",
-      wateringDetail: "Prefers slightly moist soil. Water when top ~1/2 inch is dry. Use filtered/low-mineral water if leaf tips brown.",
-      notes: "Higher humidity = happier leaves. If it curls, it’s asking for water/humidity."
+      wateringDetail:
+        "Prefers slightly moist soil. Water when top ~1/2 inch is dry. Use filtered/low-mineral water if leaf tips brown.",
+      notes:
+        "Higher humidity = happier leaves. If it curls, it’s asking for water/humidity."
     },
     {
       id: "pothos",
@@ -60,8 +65,10 @@
       careIntervalDays: 10,
       careType: "Water (when top 1–2 inches are dry)",
       lighting: "Low to bright indirect light. Tolerates low light.",
-      wateringDetail: "Let the top 1–2 inches dry, then water. Overwatering is the #1 killer.",
-      notes: "If growth slows, give brighter indirect light. Trim + propagate to thicken."
+      wateringDetail:
+        "Let the top 1–2 inches dry, then water. Overwatering is the #1 killer.",
+      notes:
+        "If growth slows, give brighter indirect light. Trim + propagate to thicken."
     },
     {
       id: "snake-plant",
@@ -71,8 +78,10 @@
       careIntervalDays: 21,
       careType: "Water (only when fully dry)",
       lighting: "Low to bright indirect light. Handles a lot.",
-      wateringDetail: "Let soil dry out completely. Water sparingly. In winter, even less.",
-      notes: "If you’re unsure, wait. Snake plants prefer neglect over fuss."
+      wateringDetail:
+        "Let soil dry out completely. Water sparingly. In winter, even less.",
+      notes:
+        "If you’re unsure, wait. Snake plants prefer neglect over fuss."
     },
     {
       id: "cactus",
@@ -82,8 +91,10 @@
       careIntervalDays: 28,
       careType: "Water (sparingly; fully dry)",
       lighting: "Bright light, some direct sun is usually fine.",
-      wateringDetail: "Soak, then let dry fully. If it’s in a small pot/bright sun it may need slightly more often.",
-      notes: "If it’s soft or translucent, it’s overwatered. If wrinkled, it’s thirsty."
+      wateringDetail:
+        "Soak, then let dry fully. If it’s in a small pot/bright sun it may need slightly more often.",
+      notes:
+        "If it’s soft or translucent, it’s overwatered. If wrinkled, it’s thirsty."
     },
     {
       id: "tiny-cactus",
@@ -93,8 +104,10 @@
       careIntervalDays: 21,
       careType: "Water (sparingly; fully dry)",
       lighting: "Bright light, some direct sun usually fine.",
-      wateringDetail: "Small pots dry fast, but still: let dry fully. Water lightly, not constantly.",
-      notes: "If you don’t have tiny-cactus.png yet, it will fall back to cactus image."
+      wateringDetail:
+        "Small pots dry fast, but still: let dry fully. Water lightly, not constantly.",
+      notes:
+        "If you don’t have tiny-cactus.png yet, it will fall back to cactus image."
     },
     {
       id: "propagation-station",
@@ -104,8 +117,10 @@
       careIntervalDays: 3,
       careType: "Refresh water / rinse vessel",
       lighting: "Bright indirect light (avoid hot direct sun on jars).",
-      wateringDetail: "Top off as needed; full refresh every few days. Rinse slime off stems and glass.",
-      notes: "Clean water = fewer rot problems. Snip mushy ends immediately."
+      wateringDetail:
+        "Top off as needed; full refresh every few days. Rinse slime off stems and glass.",
+      notes:
+        "Clean water = fewer rot problems. Snip mushy ends immediately."
     },
     {
       id: "monstera",
@@ -115,13 +130,15 @@
       careIntervalDays: 10,
       careType: "Water (when top 2 inches are dry)",
       lighting: "Bright, indirect light. Gentle morning sun OK.",
-      wateringDetail: "Water when top ~2 inches are dry. Likes a thorough soak, then drainage.",
-      notes: "Rotate for even growth. If leaves are small/no fenestration: more light."
+      wateringDetail:
+        "Water when top ~2 inches are dry. Likes a thorough soak, then drainage.",
+      notes:
+        "Rotate for even growth. If leaves are small/no fenestration: more light."
     }
   ];
 
   /* =========================
-     ROTATION (90 / 45)
+     ROTATION: 90 affirmations + 45 grounding actions
      ========================= */
   const AFFIRMATIONS = [
     "What I nurture, nurtures me.","My pace is sacred.","I grow in seasons, not deadlines.","I can be soft and powerful at once.",
@@ -187,7 +204,6 @@
     affirmation: document.getElementById("rrAffirmation"),
     grounding: document.getElementById("rrGrounding"),
     caredList: document.getElementById("rrCaredList"),
-    clearCared: document.getElementById("rrClearCared"),
 
     modalBackdrop: document.getElementById("rrModalBackdrop"),
     modalClose: document.getElementById("rrModalClose"),
@@ -258,22 +274,23 @@
   }
 
   function plantImageFile(plant) {
-    // Always provide a usable image path; tiny cactus falls back to cactus.
+    const file = ASSETS.plants[plant.imageKey] || "";
     if (plant.imageKey === "tiny-cactus") {
-      return ASSETS.plants["tiny-cactus"] || ASSETS.plants.cactus;
+      // fallback if you never uploaded tiny-cactus.png
+      return file || ASSETS.plants.cactus;
     }
-    return ASSETS.plants[plant.imageKey] || "";
+    return file;
   }
 
   function computeDue(plant, state) {
     const last = state[plant.id]?.lastCaredISO || null;
-    if (!last) return { isDue: true, lastCaredISO: null };
+    if (!last) return { isDue: true, lastCaredISO: null, daysUntil: 0 };
 
     const t = parseISODate(todayISO());
     const lastD = parseISODate(last);
     const daysSince = diffDays(lastD, t);
     const daysUntil = plant.careIntervalDays - daysSince;
-    return { isDue: daysUntil <= 0, lastCaredISO: last };
+    return { isDue: daysUntil <= 0, lastCaredISO: last, daysUntil };
   }
 
   function formatNiceDate(iso) {
@@ -307,17 +324,17 @@
      ========================= */
   function seedEmbers(container, count) {
     container.innerHTML = "";
-    const n = Math.max(6, Math.min(18, count));
+    const n = Math.max(10, Math.min(22, count)); // more prominent than before
 
     for (let i = 0; i < n; i++) {
       const s = document.createElement("span");
       s.className = "rr-ember";
 
       const left = Math.random() * 100;
-      const delay = Math.random() * 2.6;
-      const dur = 1.6 + Math.random() * 2.4;
-      const size = 2 + Math.random() * 3.6;
-      const drift = (Math.random() * 42) - 21;
+      const delay = Math.random() * 2.2;
+      const dur = 1.4 + Math.random() * 2.1;     // slightly quicker
+      const size = 3 + Math.random() * 5.2;      // bigger embers
+      const drift = (Math.random() * 56) - 28;   // wider drift
 
       s.style.left = `${left}%`;
       s.style.animationDelay = `${delay}s`;
@@ -336,7 +353,7 @@
   let currentPlantId = null;
 
   function renderDaily() {
-    // Set CSS variable so our layered background stays intact
+    // set background via CSS var (keeps your background stack intact)
     document.documentElement.style.setProperty("--bgUrl", `url("./${ASSETS.bg}")`);
 
     if (el.affirmation) el.affirmation.textContent = pickDaily(AFFIRMATIONS);
@@ -364,7 +381,6 @@
       `;
     }).join("");
 
-    // Wire clicks + seed embers only for due tiles
     const tiles = Array.from(el.tiles.querySelectorAll(".rr-tile"));
     for (const t of tiles) {
       const id = t.getAttribute("data-id");
@@ -372,7 +388,7 @@
 
       if (t.classList.contains("is-due")) {
         const emberBox = t.querySelector(".rr-embers");
-        if (emberBox) seedEmbers(emberBox, 10);
+        if (emberBox) seedEmbers(emberBox, 16);
       }
     }
   }
@@ -489,7 +505,9 @@
     }
 
     document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && el.modalBackdrop && el.modalBackdrop.hidden === false) closeModal();
+      if (e.key === "Escape" && el.modalBackdrop && el.modalBackdrop.hidden === false) {
+        closeModal();
+      }
     });
   }
 
@@ -510,14 +528,6 @@
     renderCaredList();
   }
 
-  function wireClearCared() {
-    if (!el.clearCared) return;
-    el.clearCared.addEventListener("click", () => {
-      localStorage.removeItem(STORAGE.caredLog);
-      renderCaredList();
-    });
-  }
-
   /* =========================
      BOOT
      ========================= */
@@ -526,7 +536,6 @@
     renderTiles();
     renderCaredList();
     wireModal();
-    wireClearCared();
   }
 
   if (document.readyState === "loading") {
