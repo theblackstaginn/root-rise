@@ -10,116 +10,111 @@
 
 <body>
   <main id="app" aria-label="Root & Rise">
+
     <header class="app-header">
       <div class="title-row">
-        <h1>Root &amp; Rise</h1>
+        <div>
+          <h1>Root &amp; Rise</h1>
+          <p class="subtitle">Tend what grows. Tend yourself.</p>
+        </div>
+
         <div class="header-actions">
-          <button id="btn-help" class="ghost" type="button">Guide</button>
-          <button id="btn-reset" class="ghost danger" type="button">Reset</button>
+          <button id="btn-help" class="btn ghost" type="button">Guide</button>
+          <button id="btn-reset" class="btn ghost danger" type="button">Reset</button>
         </div>
       </div>
-      <p class="subtitle">A quiet garden, kept with love.</p>
     </header>
 
-    <section class="panel today">
-      <div class="panel-head">
-        <h2>Today</h2>
-        <div class="panel-meta">
-          <span id="today-date" class="muted"></span>
-        </div>
+    <!-- SECTION 1: PLANTS (ALL) -->
+    <section class="panel" aria-labelledby="plantsTitle">
+      <div class="panel-title">
+        <h2 id="plantsTitle">Plants</h2>
+        <span id="plantsHint" class="hint"></span>
       </div>
 
-      <div id="today-empty" class="empty" hidden>
-        Nothing to water today. Let it be easy.
-      </div>
-
-      <div id="today-list" class="today-list" aria-label="Plants due today"></div>
+      <div id="plantsGrid" class="grid" aria-label="All plants"></div>
     </section>
 
-    <section class="panel ritual">
-      <div class="panel-head">
-        <h2>Root &amp; Rise</h2>
-        <div class="panel-meta">
-          <span id="cycle-meta" class="muted"></span>
+    <!-- SECTION 2: ROOT & RISE CARD (AFFIRMATION GLASS OVERLAY) -->
+    <section class="panel ritual" aria-labelledby="ritualTitle">
+      <div class="panel-title">
+        <h2 id="ritualTitle">Root &amp; Rise</h2>
+        <span id="dayStamp" class="hint"></span>
+      </div>
+
+      <div id="cardStage" class="card-stage" aria-label="Affirmation card">
+        <img id="cardImg" class="card-img" alt="Root & Rise card art" />
+        <div class="card-glass" role="note" aria-label="Affirmation">
+          <div id="affirmationText" class="card-text"></div>
         </div>
       </div>
 
-      <div class="ritual-card">
-        <img class="ritual-image" src="./root-rise-card.png" alt="Root & Rise card art" />
-        <div class="ritual-text">
-          <div id="affirmation" class="affirmation"></div>
-          <div id="grounding" class="grounding"></div>
-        </div>
+      <div class="grounding-panel" aria-label="Grounding action">
+        <div class="grounding-title">Grounding</div>
+        <div id="groundingText" class="grounding-text"></div>
       </div>
     </section>
 
-    <section class="panel library">
-      <div class="panel-head">
-        <h2>Plant Library</h2>
-        <div class="panel-meta">
-          <span class="muted">Tap a plant for full care details.</span>
-        </div>
+    <!-- SECTION 3: CARED FOR -->
+    <section class="panel" aria-labelledby="caredTitle">
+      <div class="panel-title">
+        <h2 id="caredTitle">Cared For</h2>
+        <span class="hint">Recently tended.</span>
       </div>
 
-      <div id="plants-grid" class="plant-grid" aria-label="All plants"></div>
+      <div id="caredList" class="cared-list"></div>
+      <div id="caredEmpty" class="empty" hidden>
+        <div class="empty-title">Nothing logged yet.</div>
+        <div class="empty-sub">When you mark a plant cared for, it’ll show up here.</div>
+      </div>
     </section>
-  </main>
 
-  <!-- PLANT DETAILS MODAL -->
-  <div id="modal" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close="true"></div>
+    <!-- Plant Detail Modal -->
+    <div id="plantModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="1"></div>
 
-    <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div class="modal-head">
-        <div class="modal-title">
-          <h3 id="modal-title"></h3>
-          <div id="modal-subtitle" class="muted"></div>
-        </div>
-        <button class="iconbtn" type="button" id="modal-close" aria-label="Close">✕</button>
-      </div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <button class="modal-close" type="button" aria-label="Close" data-close="1">✕</button>
 
-      <div class="modal-body">
-        <div class="modal-hero">
-          <img id="modal-img" class="modal-img" alt="" />
-          <div class="modal-hero-meta">
-            <div id="modal-status" class="badge"></div>
-            <div id="modal-last" class="muted"></div>
-            <div id="modal-cycle" class="muted"></div>
+        <div class="modal-head">
+          <img id="modalImg" class="modal-img" alt="" />
+          <div class="modal-head-text">
+            <h2 id="modalTitle"></h2>
+            <div id="modalMeta" class="modal-meta"></div>
           </div>
         </div>
 
-        <div class="facts" id="modal-facts"></div>
+        <div id="modalBody" class="modal-body"></div>
 
         <div class="modal-actions">
-          <button id="modal-watered" class="primary" type="button">Mark Watered Today</button>
-          <button id="modal-snooze" class="ghost" type="button">Snooze 2 Days</button>
+          <button id="modalCareBtn" class="btn primary" type="button">Mark Cared For</button>
+          <button class="btn ghost" type="button" data-close="1">Close</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- HELP MODAL -->
-  <div id="help" class="modal" aria-hidden="true">
-    <div class="modal-backdrop" data-close="true"></div>
-    <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="help-title">
-      <div class="modal-head">
-        <div class="modal-title">
-          <h3 id="help-title">How this works</h3>
-          <div class="muted">No guilt. No streaks. Just care.</div>
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal" aria-hidden="true">
+      <div class="modal-backdrop" data-close="1"></div>
+
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+        <button class="modal-close" type="button" aria-label="Close" data-close="1">✕</button>
+
+        <h2 id="helpTitle" class="help-title">How it works</h2>
+        <div class="help-body">
+          <p><strong>Every plant tile is tappable.</strong> Open it to see care notes, lighting, last cared, and next due.</p>
+          <p><strong>When a plant needs attention</strong>, it will glow and release embers. That’s your gentle nudge.</p>
+          <p><strong>Mark “Cared For”</strong> when you water, mist, prune, rotate, or simply check soil. This keeps the schedule honest without pressure.</p>
+          <p><strong>Ritual section</strong> gives a daily affirmation and grounding action—quiet support, not noise.</p>
         </div>
-        <button class="iconbtn" type="button" id="help-close" aria-label="Close">✕</button>
-      </div>
 
-      <div class="modal-body">
-        <div class="help-block">
-          <p><strong>Today</strong> shows only the plants that need water. Tap a plant to view full care details.</p>
-          <p><strong>Plant Library</strong> is your calm reference. Due plants are marked.</p>
-          <p><strong>Root &amp; Rise</strong> rotates one affirmation daily, and a grounding action from a 45-day cycle.</p>
-          <p class="muted">Watering is based on cadence + “last watered”. Always override with what the plant tells you.</p>
+        <div class="modal-actions">
+          <button class="btn primary" type="button" data-close="1">Got it</button>
         </div>
       </div>
     </div>
-  </div>
+
+  </main>
 
   <script src="./app.js" defer></script>
 </body>
