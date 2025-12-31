@@ -224,7 +224,19 @@ button,
   opacity: 1;
 }
 
-/* Embers: masked to a THICKER ring around the edges (frame area) */
+/* =========================
+   EMBERS — PARCHMENT SAFE
+   ========================= */
+
+:root{
+  /* Ember palette tuned for parchment */
+  --ember-core: rgba(248,248,245,.98);   /* moon-ivory */
+  --ember-mid:  rgba(210,220,235,.85);   /* pale silver-blue */
+  --ember-edge: rgba(160,180,210,.55);   /* cool desaturated blue */
+  --ember-shadow: rgba(20,22,30,.55);    /* contrast edge */
+}
+
+/* Ember container (already masked to ring) */
 .rr-embers{
   position:absolute;
   inset:0;
@@ -233,7 +245,6 @@ button,
   opacity: 0;
   transition: opacity .25s ease;
 
-  /* Bigger ring: show more frame band */
   -webkit-mask-image: radial-gradient(circle at center,
     transparent 0 54%,
     #000 60% 100%);
@@ -242,34 +253,50 @@ button,
     #000 60% 100%);
 }
 
-.rr-tile.is-due .rr-embers{ opacity: 1; }
+.rr-tile.is-due .rr-embers{ opacity:1; }
 
-/* Individual ember particles (more prominent) */
+/* Individual ember particles */
 .rr-ember{
   position:absolute;
   bottom: 10%;
   left: 50%;
   border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%,
-    rgba(255,235,200,.98),
-    rgba(255,205,140,.96) 30%,
-    var(--ember) 55%,
-    rgba(255,120,60,.28) 78%,
-    transparent 100%);
+
+  background:
+    radial-gradient(circle at 35% 35%,
+      var(--ember-core) 0%,
+      var(--ember-mid) 38%,
+      var(--ember-edge) 62%,
+      transparent 100%);
+
+  /* Critical: dark halo + cool glow = parchment contrast */
   filter:
-    drop-shadow(0 0 6px rgba(255,200,140,.35))
-    drop-shadow(0 0 18px rgba(255,120,60,.25));
+    drop-shadow(0 0 2px var(--ember-shadow))
+    drop-shadow(0 0 6px rgba(180,200,230,.45))
+    drop-shadow(0 0 14px rgba(140,170,220,.35));
+
   opacity: 0;
   animation-name: rr-ember-float;
   animation-timing-function: ease-in-out;
   animation-iteration-count: infinite;
 }
 
+/* Ember motion (unchanged, but tuned height) */
 @keyframes rr-ember-float{
-  0%   { transform: translate3d(0, 0, 0) scale(.85); opacity: 0; }
-  15%  { opacity: .95; }
-  60%  { opacity: .65; }
-  100% { transform: translate3d(var(--drift, 0px), -130px, 0) scale(1.25); opacity: 0; }
+  0%{
+    transform: translate3d(0, 0, 0) scale(.9);
+    opacity: 0;
+  }
+  15%{
+    opacity: .95;
+  }
+  60%{
+    opacity: .7;
+  }
+  100%{
+    transform: translate3d(var(--drift, 0px), -135px, 0) scale(1.25);
+    opacity: 0;
+  }
 }
 
 /* ========= CARD + AFFIRMATION ========= */
