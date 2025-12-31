@@ -1,23 +1,19 @@
 /* Root & Rise — app.js
    - Vanilla JS, localStorage persistence
-   - Uses existing DOM from index.html (NO dynamic mount)
-   - Layout:
-     1) Plant tiles (2 columns) — always visible, no text on tiles
-        • Tiles glow + embers ONLY when due for care
-        • Click tile -> Plant Detail modal (full info + “Cared For” button)
-     2) Root & Rise card section
-        • Affirmation on glass panel over root-rise-card image
-     3) Grounding action panel
-     4) “Cared For” recent list
+   - Always show all plant tiles (no text)
+   - Glow + embers ONLY when due
+   - Click tile -> modal details + Mark Cared For
+   - Daily affirmation + grounding (90 / 45), deterministic by local date
 */
 
 (() => {
   "use strict";
 
   /* =========================
-     CONFIG: Assets in REPO ROOT
+     ASSETS (repo root)
      ========================= */
   const ASSETS = {
+    bg: "bg-01.png",
     plants: {
       "albino-syngonium": "albino-syngonium.png",
       "prayer-plant": "prayer-plant.png",
@@ -26,13 +22,12 @@
       "cactus": "cactus.png",
       "propagation-station": "propagation-station.png",
       "monstera": "monstera.png",
-      // optional
-      "tiny-cactus": "tiny-cactus.png"
+      "tiny-cactus": "tiny-cactus.png" // optional; fallback handled below
     }
   };
 
   /* =========================
-     DATA: Plants + Care Guidance
+     PLANTS
      ========================= */
   const PLANTS = [
     {
@@ -43,10 +38,8 @@
       careIntervalDays: 7,
       careType: "Water (when top inch is dry)",
       lighting: "Bright, indirect light. Avoid harsh direct sun.",
-      wateringDetail:
-        "Let the top ~1 inch of soil dry, then water thoroughly. Likes evenly moist soil but not soggy.",
-      notes:
-        "Albino/variegated leaves need brighter indirect light to hold color. If it dries too hard, it sulks."
+      wateringDetail: "Let the top ~1 inch of soil dry, then water thoroughly. Likes evenly moist soil but not soggy.",
+      notes: "Albino/variegated leaves need brighter indirect light to hold color. If it dries too hard, it sulks."
     },
     {
       id: "prayer-plant",
@@ -56,10 +49,8 @@
       careIntervalDays: 6,
       careType: "Water (keep lightly moist)",
       lighting: "Medium to bright indirect light. No direct sun.",
-      wateringDetail:
-        "Prefers slightly moist soil. Water when top ~1/2 inch is dry. Use filtered/low-mineral water if leaf tips brown.",
-      notes:
-        "Higher humidity = happier leaves. If it curls, it’s asking for water/humidity."
+      wateringDetail: "Prefers slightly moist soil. Water when top ~1/2 inch is dry. Use filtered/low-mineral water if leaf tips brown.",
+      notes: "Higher humidity = happier leaves. If it curls, it’s asking for water/humidity."
     },
     {
       id: "pothos",
@@ -69,10 +60,8 @@
       careIntervalDays: 10,
       careType: "Water (when top 1–2 inches are dry)",
       lighting: "Low to bright indirect light. Tolerates low light.",
-      wateringDetail:
-        "Let the top 1–2 inches dry, then water. Overwatering is the #1 killer.",
-      notes:
-        "If growth slows, give brighter indirect light. Trim + propagate to thicken."
+      wateringDetail: "Let the top 1–2 inches dry, then water. Overwatering is the #1 killer.",
+      notes: "If growth slows, give brighter indirect light. Trim + propagate to thicken."
     },
     {
       id: "snake-plant",
@@ -82,10 +71,8 @@
       careIntervalDays: 21,
       careType: "Water (only when fully dry)",
       lighting: "Low to bright indirect light. Handles a lot.",
-      wateringDetail:
-        "Let soil dry out completely. Water sparingly. In winter, even less.",
-      notes:
-        "If you’re unsure, wait. Snake plants prefer neglect over fuss."
+      wateringDetail: "Let soil dry out completely. Water sparingly. In winter, even less.",
+      notes: "If you’re unsure, wait. Snake plants prefer neglect over fuss."
     },
     {
       id: "cactus",
@@ -95,10 +82,8 @@
       careIntervalDays: 28,
       careType: "Water (sparingly; fully dry)",
       lighting: "Bright light, some direct sun is usually fine.",
-      wateringDetail:
-        "Soak, then let dry fully. If it’s in a small pot/bright sun it may need slightly more often.",
-      notes:
-        "If it’s soft or translucent, it’s overwatered. If wrinkled, it’s thirsty."
+      wateringDetail: "Soak, then let dry fully. If it’s in a small pot/bright sun it may need slightly more often.",
+      notes: "If it’s soft or translucent, it’s overwatered. If wrinkled, it’s thirsty."
     },
     {
       id: "tiny-cactus",
@@ -108,10 +93,8 @@
       careIntervalDays: 21,
       careType: "Water (sparingly; fully dry)",
       lighting: "Bright light, some direct sun usually fine.",
-      wateringDetail:
-        "Small pots dry fast, but still: let dry fully. Water lightly, not constantly.",
-      notes:
-        "If you don’t have tiny-cactus.png yet, it will fall back to cactus image."
+      wateringDetail: "Small pots dry fast, but still: let dry fully. Water lightly, not constantly.",
+      notes: "If you don’t have tiny-cactus.png yet, it will fall back to cactus image."
     },
     {
       id: "propagation-station",
@@ -121,10 +104,8 @@
       careIntervalDays: 3,
       careType: "Refresh water / rinse vessel",
       lighting: "Bright indirect light (avoid hot direct sun on jars).",
-      wateringDetail:
-        "Top off as needed; full refresh every few days. Rinse slime off stems and glass.",
-      notes:
-        "Clean water = fewer rot problems. Snip mushy ends immediately."
+      wateringDetail: "Top off as needed; full refresh every few days. Rinse slime off stems and glass.",
+      notes: "Clean water = fewer rot problems. Snip mushy ends immediately."
     },
     {
       id: "monstera",
@@ -134,15 +115,13 @@
       careIntervalDays: 10,
       careType: "Water (when top 2 inches are dry)",
       lighting: "Bright, indirect light. Gentle morning sun OK.",
-      wateringDetail:
-        "Water when top ~2 inches are dry. Likes a thorough soak, then drainage.",
-      notes:
-        "Rotate for even growth. If leaves are small/no fenestration: more light."
+      wateringDetail: "Water when top ~2 inches are dry. Likes a thorough soak, then drainage.",
+      notes: "Rotate for even growth. If leaves are small/no fenestration: more light."
     }
   ];
 
   /* =========================
-     ROTATION: 90 affirmations + 45 grounding actions (daily deterministic)
+     ROTATION (90 / 45)
      ========================= */
   const AFFIRMATIONS = [
     "What I nurture, nurtures me.","My pace is sacred.","I grow in seasons, not deadlines.","I can be soft and powerful at once.",
@@ -193,17 +172,55 @@
   ].slice(0, 45);
 
   /* =========================
-     STORAGE KEYS
+     STORAGE
      ========================= */
   const STORAGE = {
-    plantState: "rr.plantState.v2", // { [plantId]: { lastCaredISO:"YYYY-MM-DD" } }
-    caredLog: "rr.caredLog.v2"      // [{ plantId, plantName, tsISO }]
+    plantState: "rr.plantState.v4",
+    caredLog: "rr.caredLog.v4"
+  };
+
+  /* =========================
+     DOM
+     ========================= */
+  const el = {
+    tiles: document.getElementById("rrTiles"),
+    affirmation: document.getElementById("rrAffirmation"),
+    grounding: document.getElementById("rrGrounding"),
+    caredList: document.getElementById("rrCaredList"),
+    clearCared: document.getElementById("rrClearCared"),
+
+    modalBackdrop: document.getElementById("rrModalBackdrop"),
+    modalClose: document.getElementById("rrModalClose"),
+    modalClose2: document.getElementById("rrModalClose2"),
+    modalThumb: document.getElementById("rrModalThumb"),
+    modalTitle: document.getElementById("rrModalTitle"),
+    modalSub: document.getElementById("rrModalSub"),
+    modalGrid: document.getElementById("rrModalGrid"),
+    markBtn: document.getElementById("rrMarkCaredBtn")
   };
 
   /* =========================
      HELPERS
      ========================= */
-  const $ = (id) => document.getElementById(id);
+  function safeJSONParse(str, fallback) {
+    try { return JSON.parse(str); } catch { return fallback; }
+  }
+
+  function loadPlantState() {
+    return safeJSONParse(localStorage.getItem(STORAGE.plantState), {}) || {};
+  }
+
+  function savePlantState(state) {
+    localStorage.setItem(STORAGE.plantState, JSON.stringify(state));
+  }
+
+  function loadCaredLog() {
+    return safeJSONParse(localStorage.getItem(STORAGE.caredLog), []) || [];
+  }
+
+  function saveCaredLog(log) {
+    localStorage.setItem(STORAGE.caredLog, JSON.stringify(log));
+  }
 
   function todayISO() {
     const d = new Date();
@@ -225,26 +242,6 @@
     return Math.floor((ub - ua) / ms);
   }
 
-  function safeJSONParse(str, fallback) {
-    try { return JSON.parse(str); } catch { return fallback; }
-  }
-
-  function loadPlantState() {
-    return safeJSONParse(localStorage.getItem(STORAGE.plantState), {}) || {};
-  }
-
-  function savePlantState(state) {
-    localStorage.setItem(STORAGE.plantState, JSON.stringify(state));
-  }
-
-  function loadCaredLog() {
-    return safeJSONParse(localStorage.getItem(STORAGE.caredLog), []) || [];
-  }
-
-  function saveCaredLog(log) {
-    localStorage.setItem(STORAGE.caredLog, JSON.stringify(log));
-  }
-
   function daySeed() {
     const iso = todayISO();
     let h = 2166136261;
@@ -257,33 +254,26 @@
 
   function pickDaily(arr) {
     if (!arr.length) return "";
-    const idx = daySeed() % arr.length;
-    return arr[idx];
+    return arr[daySeed() % arr.length];
   }
 
-  function plantImageURL(plant) {
-    const key = plant.imageKey;
-    if (key === "tiny-cactus" && !ASSETS.plants["tiny-cactus"]) return ASSETS.plants.cactus;
-    return ASSETS.plants[key] || "";
+  function plantImageFile(plant) {
+    // Always provide a usable image path; tiny cactus falls back to cactus.
+    if (plant.imageKey === "tiny-cactus") {
+      return ASSETS.plants["tiny-cactus"] || ASSETS.plants.cactus;
+    }
+    return ASSETS.plants[plant.imageKey] || "";
   }
 
   function computeDue(plant, state) {
+    const last = state[plant.id]?.lastCaredISO || null;
+    if (!last) return { isDue: true, lastCaredISO: null };
+
     const t = parseISODate(todayISO());
-    const last = state[plant.id]?.lastCaredISO;
-
-    if (!last) {
-      return { isDue: true, lastCaredISO: null, daysUntil: 0 };
-    }
-
     const lastD = parseISODate(last);
     const daysSince = diffDays(lastD, t);
     const daysUntil = plant.careIntervalDays - daysSince;
-
-    return {
-      isDue: daysUntil <= 0,
-      lastCaredISO: last,
-      daysUntil
-    };
+    return { isDue: daysUntil <= 0, lastCaredISO: last };
   }
 
   function formatNiceDate(iso) {
@@ -292,293 +282,214 @@
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
-  function nextCareDateISO(plant, lastISO) {
-    if (!lastISO) return todayISO();
+  function nextCareNice(plant, lastISO) {
+    if (!lastISO) return "Today";
     const last = parseISODate(lastISO);
     const next = new Date(last.getFullYear(), last.getMonth(), last.getDate() + plant.careIntervalDays);
-    const yyyy = next.getFullYear();
-    const mm = String(next.getMonth() + 1).padStart(2, "0");
-    const dd = String(next.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
+    return next.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  }
+
+  function escapeHTML(str) {
+    return String(str ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function escapeAttr(str) {
+    return String(str ?? "").replaceAll('"', "%22").replaceAll("'", "%27");
   }
 
   /* =========================
-     EMBERS (canvas particles)
-     - Only runs for due tiles
+     EMBERS (span particles; CSS animates)
      ========================= */
-  function startEmbers(canvas) {
-    const ctx = canvas.getContext("2d");
-    let raf = 0;
-    let running = true;
+  function seedEmbers(container, count) {
+    container.innerHTML = "";
+    const n = Math.max(6, Math.min(18, count));
 
-    const DPR = Math.min(2, window.devicePixelRatio || 1);
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement("span");
+      s.className = "rr-ember";
 
-    function resize() {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.max(1, Math.floor(rect.width * DPR));
-      canvas.height = Math.max(1, Math.floor(rect.height * DPR));
+      const left = Math.random() * 100;
+      const delay = Math.random() * 2.6;
+      const dur = 1.6 + Math.random() * 2.4;
+      const size = 2 + Math.random() * 3.6;
+      const drift = (Math.random() * 42) - 21;
+
+      s.style.left = `${left}%`;
+      s.style.animationDelay = `${delay}s`;
+      s.style.animationDuration = `${dur}s`;
+      s.style.width = `${size}px`;
+      s.style.height = `${size}px`;
+      s.style.setProperty("--drift", `${drift}px`);
+
+      container.appendChild(s);
     }
-
-    resize();
-
-    const particles = Array.from({ length: 22 }, () => makeParticle(canvas));
-
-    function makeParticle(c) {
-      const w = c.width, h = c.height;
-      return {
-        x: Math.random() * w,
-        y: h + Math.random() * h * 0.2,
-        r: (1.2 + Math.random() * 2.8) * DPR,
-        vy: (0.35 + Math.random() * 0.9) * DPR,
-        vx: (-0.35 + Math.random() * 0.7) * DPR,
-        a: 0.25 + Math.random() * 0.55,
-        life: 0.0,
-        max: 1.0 + Math.random() * 1.2
-      };
-    }
-
-    function tick() {
-      if (!running) return;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // gentle fade so embers don't look like confetti
-      ctx.globalCompositeOperation = "lighter";
-
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.life += 0.016;
-
-        p.x += p.vx;
-        p.y -= p.vy;
-        p.a *= 0.996;
-
-        // float upward curve
-        p.vx += (Math.sin((p.life + i) * 0.8) * 0.004) * DPR;
-
-        const alpha = Math.max(0, Math.min(1, (1 - (p.life / p.max)))) * p.a;
-        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r * 2.5);
-        grad.addColorStop(0, `rgba(255,170,90,${alpha})`);
-        grad.addColorStop(0.6, `rgba(255,120,60,${alpha * 0.55})`);
-        grad.addColorStop(1, `rgba(255,120,60,0)`);
-
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r * 2.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // reset when offscreen
-        if (p.y < -p.r * 6 || p.life > p.max) {
-          particles[i] = makeParticle(canvas);
-        }
-      }
-
-      ctx.globalCompositeOperation = "source-over";
-      raf = requestAnimationFrame(tick);
-    }
-
-    // handle resize
-    const ro = new ResizeObserver(() => {
-      resize();
-    });
-    ro.observe(canvas);
-
-    tick();
-
-    return () => {
-      running = false;
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-    };
   }
 
   /* =========================
-     UI: Render tiles / affirmation / grounding / cared list
+     RENDER
      ========================= */
-  const emberStops = new Map(); // plantId -> stopFn
-  let currentModalPlantId = null;
+  let currentPlantId = null;
 
   function renderDaily() {
-    const aEl = $("rrAffirmation");
-    const gEl = $("rrGrounding");
+    // Set CSS variable so our layered background stays intact
+    document.documentElement.style.setProperty("--bgUrl", `url("./${ASSETS.bg}")`);
 
-    if (aEl) aEl.textContent = pickDaily(AFFIRMATIONS);
-    if (gEl) gEl.textContent = pickDaily(GROUNDING_ACTIONS);
+    if (el.affirmation) el.affirmation.textContent = pickDaily(AFFIRMATIONS);
+    if (el.grounding) el.grounding.textContent = pickDaily(GROUNDING_ACTIONS);
   }
 
   function renderTiles() {
-    const grid = $("rrTiles");
-    if (!grid) return;
-
-    // stop any prior ember loops
-    emberStops.forEach((stop) => stop());
-    emberStops.clear();
+    if (!el.tiles) return;
 
     const state = loadPlantState();
 
-    grid.innerHTML = PLANTS.map((p) => {
+    el.tiles.innerHTML = PLANTS.map((p) => {
       const due = computeDue(p, state);
-      const img = plantImageURL(p);
-      const dueAttr = due.isDue ? "true" : "false";
+      const img = plantImageFile(p);
+      const dueClass = due.isDue ? "is-due" : "";
+      const aria = `${p.name}${p.countLabel ? " " + p.countLabel : ""}`;
 
-      // NOTE: no text inside tile; clickable button; image fills
       return `
-        <button class="tile" type="button"
+        <button class="rr-tile ${dueClass}" type="button"
           data-id="${escapeAttr(p.id)}"
-          data-due="${dueAttr}"
-          aria-label="${escapeHTML(p.name)}">
-          <img class="tile-img" src="./${escapeAttr(img)}" alt="" loading="lazy" />
-          <div class="tile-glow" aria-hidden="true"></div>
-          <canvas class="ember-canvas" aria-hidden="true"></canvas>
+          aria-label="${escapeHTML(aria)}">
+          <div class="rr-tile-img" style="background-image:url('./${escapeAttr(img)}')"></div>
+          <div class="rr-embers" aria-hidden="true"></div>
         </button>
       `;
     }).join("");
 
-    // wire clicks + embers only for due tiles
-    Array.from(grid.querySelectorAll(".tile")).forEach((tile) => {
-      const id = tile.getAttribute("data-id");
-      tile.addEventListener("click", () => openModal(id));
+    // Wire clicks + seed embers only for due tiles
+    const tiles = Array.from(el.tiles.querySelectorAll(".rr-tile"));
+    for (const t of tiles) {
+      const id = t.getAttribute("data-id");
+      t.addEventListener("click", () => openModal(id));
 
-      const isDue = tile.getAttribute("data-due") === "true";
-      if (isDue) {
-        const canvas = tile.querySelector(".ember-canvas");
-        if (canvas) {
-          const stop = startEmbers(canvas);
-          emberStops.set(id, stop);
-        }
+      if (t.classList.contains("is-due")) {
+        const emberBox = t.querySelector(".rr-embers");
+        if (emberBox) seedEmbers(emberBox, 10);
       }
-    });
+    }
   }
 
   function renderCaredList() {
-    const list = $("rrCaredList");
-    if (!list) return;
+    if (!el.caredList) return;
 
     const log = loadCaredLog();
     if (!log.length) {
-      list.innerHTML = `<div class="rr-empty">No care marked yet.</div>`;
+      el.caredList.innerHTML = `<div class="rr-cared-empty">No care marked yet. First tending awakens the ledger.</div>`;
       return;
     }
 
-    const recent = log.slice().reverse().slice(0, 14);
-    list.innerHTML = recent.map((e) => {
-      const when = new Date(e.tsISO);
+    const recent = log.slice().reverse().slice(0, 12);
+    el.caredList.innerHTML = recent.map((entry) => {
+      const when = new Date(entry.tsISO);
       const nice = when.toLocaleString(undefined, {
         month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
       });
+
       return `
-        <div class="history-item">
-          <div class="history-name">${escapeHTML(e.plantName)}</div>
-          <div class="history-time">${escapeHTML(nice)}</div>
+        <div class="rr-cared-item">
+          <div class="rr-cared-name">${escapeHTML(entry.plantName)}</div>
+          <div class="rr-cared-time">${escapeHTML(nice)}</div>
         </div>
       `;
     }).join("");
   }
 
   /* =========================
-     MODAL: open/close + content
+     MODAL
      ========================= */
   function openModal(plantId) {
     const plant = PLANTS.find((p) => p.id === plantId);
     if (!plant) return;
 
-    const backdrop = $("rrModalBackdrop");
-    const thumb = $("rrModalThumb");
-    const title = $("rrModalTitle");
-    const sub = $("rrModalSub");
-    const grid = $("rrModalGrid");
-    const markBtn = $("rrMarkCaredBtn");
-
-    if (!backdrop || !thumb || !title || !sub || !grid || !markBtn) return;
-
     const state = loadPlantState();
     const due = computeDue(plant, state);
 
-    currentModalPlantId = plantId;
+    currentPlantId = plantId;
 
-    // thumb image
-    const img = plantImageURL(plant);
-    thumb.style.backgroundImage = `url("./${img}")`;
-
-    // title/sub
-    title.textContent = `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`;
-    sub.textContent = due.isDue ? "Due now." : "Not due yet.";
+    const img = plantImageFile(plant);
+    if (el.modalThumb) el.modalThumb.style.backgroundImage = `url("./${img}")`;
+    if (el.modalTitle) el.modalTitle.textContent = `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`;
+    if (el.modalSub) el.modalSub.textContent = due.isDue ? "Due now." : "Not due yet.";
 
     const last = due.lastCaredISO;
-    const nextISO = nextCareDateISO(plant, last);
-    const nextNice = formatNiceDate(nextISO);
+    const nextNice = nextCareNice(plant, last);
 
-    grid.innerHTML = `
-      <div class="rr-info">
-        <div class="rr-info-label">Lighting</div>
-        <div class="rr-info-value">${escapeHTML(plant.lighting)}</div>
-      </div>
+    if (el.modalGrid) {
+      el.modalGrid.innerHTML = `
+        <div class="rr-info">
+          <div class="rr-info-label">Lighting</div>
+          <div class="rr-info-value">${escapeHTML(plant.lighting)}</div>
+        </div>
 
-      <div class="rr-info">
-        <div class="rr-info-label">Care rhythm</div>
-        <div class="rr-info-value">About every ${plant.careIntervalDays} day${plant.careIntervalDays === 1 ? "" : "s"}.</div>
-      </div>
+        <div class="rr-info">
+          <div class="rr-info-label">Care rhythm</div>
+          <div class="rr-info-value">About every ${plant.careIntervalDays} day${plant.careIntervalDays === 1 ? "" : "s"}.</div>
+        </div>
 
-      <div class="rr-info">
-        <div class="rr-info-label">What to do</div>
-        <div class="rr-info-value">${escapeHTML(plant.careType)}</div>
-      </div>
+        <div class="rr-info">
+          <div class="rr-info-label">What to do</div>
+          <div class="rr-info-value">${escapeHTML(plant.careType)}</div>
+        </div>
 
-      <div class="rr-info">
-        <div class="rr-info-label">Care details</div>
-        <div class="rr-info-value">${escapeHTML(plant.wateringDetail)}</div>
-      </div>
+        <div class="rr-info">
+          <div class="rr-info-label">Care details</div>
+          <div class="rr-info-value">${escapeHTML(plant.wateringDetail)}</div>
+        </div>
 
-      <div class="rr-info">
-        <div class="rr-info-label">Last cared for</div>
-        <div class="rr-info-value">${escapeHTML(formatNiceDate(last))}</div>
-      </div>
+        <div class="rr-info">
+          <div class="rr-info-label">Last cared for</div>
+          <div class="rr-info-value">${escapeHTML(formatNiceDate(last))}</div>
+        </div>
 
-      <div class="rr-info">
-        <div class="rr-info-label">Next care (target)</div>
-        <div class="rr-info-value">${escapeHTML(nextNice)}</div>
-      </div>
+        <div class="rr-info">
+          <div class="rr-info-label">Next care (target)</div>
+          <div class="rr-info-value">${escapeHTML(nextNice)}</div>
+        </div>
 
-      <div class="rr-info rr-info-full">
-        <div class="rr-info-label">Notes</div>
-        <div class="rr-info-value">${escapeHTML(plant.notes || "")}</div>
-      </div>
-    `;
+        <div class="rr-info rr-info-full">
+          <div class="rr-info-label">Notes</div>
+          <div class="rr-info-value">${escapeHTML(plant.notes || "")}</div>
+        </div>
+      `;
+    }
 
-    // wire button (replace handler each open)
-    markBtn.onclick = () => {
-      markCaredFor(plant);
-      closeModal();
-    };
+    if (el.markBtn) {
+      el.markBtn.onclick = () => {
+        markCaredFor(plant);
+        closeModal();
+      };
+    }
 
-    backdrop.hidden = false;
-    document.body.style.overflow = "hidden";
+    if (el.modalBackdrop) el.modalBackdrop.hidden = false;
+    document.body.classList.add("rr-modal-open");
   }
 
   function closeModal() {
-    const backdrop = $("rrModalBackdrop");
-    if (!backdrop) return;
-    backdrop.hidden = true;
-    document.body.style.overflow = "";
-    currentModalPlantId = null;
+    if (el.modalBackdrop) el.modalBackdrop.hidden = true;
+    document.body.classList.remove("rr-modal-open");
+    currentPlantId = null;
   }
 
   function wireModal() {
-    const backdrop = $("rrModalBackdrop");
-    const close1 = $("rrModalClose");
-    const close2 = $("rrModalClose2");
+    if (el.modalClose) el.modalClose.addEventListener("click", closeModal);
+    if (el.modalClose2) el.modalClose2.addEventListener("click", closeModal);
 
-    if (close1) close1.addEventListener("click", closeModal);
-    if (close2) close2.addEventListener("click", closeModal);
-
-    if (backdrop) {
-      backdrop.addEventListener("click", (e) => {
-        if (e.target === backdrop) closeModal();
+    if (el.modalBackdrop) {
+      el.modalBackdrop.addEventListener("click", (e) => {
+        if (e.target === el.modalBackdrop) closeModal();
       });
     }
 
     document.addEventListener("keydown", (e) => {
-      const bd = $("rrModalBackdrop");
-      if (e.key === "Escape" && bd && bd.hidden === false) closeModal();
+      if (e.key === "Escape" && el.modalBackdrop && el.modalBackdrop.hidden === false) closeModal();
     });
   }
 
@@ -595,41 +506,27 @@
     });
     saveCaredLog(log);
 
-    // refresh UI
     renderTiles();
     renderCaredList();
   }
 
-  /* =========================
-     ESCAPING
-     ========================= */
-  function escapeHTML(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#039;");
-  }
-
-  function escapeAttr(str) {
-    return String(str ?? "").replaceAll('"', "%22").replaceAll("'", "%27");
+  function wireClearCared() {
+    if (!el.clearCared) return;
+    el.clearCared.addEventListener("click", () => {
+      localStorage.removeItem(STORAGE.caredLog);
+      renderCaredList();
+    });
   }
 
   /* =========================
      BOOT
      ========================= */
   function boot() {
-    // sanity: required elements exist
-    const required = ["rrTiles","rrAffirmation","rrGrounding","rrCaredList","rrModalBackdrop"];
-    for (const id of required) {
-      if (!$(id)) console.warn(`Root & Rise: missing #${id}`);
-    }
-
     renderDaily();
     renderTiles();
     renderCaredList();
     wireModal();
+    wireClearCared();
   }
 
   if (document.readyState === "loading") {
