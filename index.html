@@ -89,6 +89,8 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
     </a>
   </p>
   <div class="rr-ptr" id="rrPullRefresh" role="status" aria-live="polite" hidden></div>
+  <button class="rr-refresh-button" id="rrBackupButton" type="button">Download garden backup</button>
+  <p>Keep a copy of your care dates and tending ledger. Your garden doesn’t transfer automatically between devices.</p>
   <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
   <script>
     (() => {
@@ -121,6 +123,36 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
         window.location.replace(url.href);
       }
       button.addEventListener("click", refreshGarden);
+      document.getElementById("rrBackupButton").addEventListener("click", () => {
+        if (refreshing) return;
+        let link = null, url = null;
+        try {
+          const stateText = localStorage.getItem("rr.plantState.v4");
+          const logText = localStorage.getItem("rr.caredLog.v4");
+          const plantState = stateText === null ? {} : JSON.parse(stateText);
+          const caredLog = logText === null ? [] : JSON.parse(logText);
+          if (!plantState || typeof plantState !== "object" || Array.isArray(plantState) || !Array.isArray(caredLog)) {
+            throw new Error("Unreadable garden records");
+          }
+          const now = new Date();
+          const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+          const backup = { app:"root-rise", version:1, exportedAt:now.toISOString(), plantState, caredLog };
+          const blob = new Blob([JSON.stringify(backup, null, 2)], { type:"application/json" });
+          url = URL.createObjectURL(blob);
+          link = document.createElement("a");
+          link.href = url;
+          link.download = "root-rise-garden-" + date + ".json";
+          document.body.appendChild(link);
+          link.click();
+          show("Garden backup prepared. Save the file somewhere safe.");
+        } catch {
+          show("Your garden backup could not be prepared. Your care records are unchanged.");
+        } finally {
+          if (link) link.remove();
+          if (url) setTimeout(() => URL.revokeObjectURL(url), 60000);
+          hideTimer = setTimeout(() => { if (!refreshing) notice.hidden = true; }, 6000);
+        }
+      });
       document.addEventListener("touchstart", event => {
         reset();
         if (refreshing || event.touches.length !== 1 || !atTop() || modalOpen() ||
