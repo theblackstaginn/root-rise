@@ -732,3 +732,13 @@ body::before {
 .rr-counsel [hidden] { display:none; }
 .rr-counsel .rr-counsel-status { color:#e3c498; }
 .rr-counsel .rr-counsel-help { font-size:12px; }
+
+/* Arcadia ritual art: preserve the full illustration instead of cropping it. */
+.rr-card-img {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+}
