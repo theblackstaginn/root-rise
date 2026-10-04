@@ -9,7 +9,22 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icon-192.png">
   <link rel="apple-touch-icon" href="./icon-192.png">
-  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    html { overscroll-behavior-y:contain; }
+    .rr-ptr { position:fixed; top:calc(10px + env(safe-area-inset-top)); left:50%; transform:translateX(-50%); z-index:100; padding:12px 18px; border:1px solid #bba78388; border-radius:18px; color:#f4e6ce; background:#1c3026f5; box-shadow:0 6px 24px #0007; text-align:center; font:14px/1.4 Georgia,serif; pointer-events:none; }
+    .rr-ptr[hidden] { display:none; }
+    .rr-refresh-button { display:block; margin:20px auto; min-height:44px; padding:10px 18px; border:1px solid #bba78366; border-radius:14px; color:#eadbc2; background:#21372a; font:14px Georgia,serif; cursor:pointer; }
+    .rr-refresh-button:focus-visible { outline:3px solid #e5c798; outline-offset:4px; }
+  </style>
+  <script>
+    // Fresh URLs for the stylesheet and app code on every visit, including PTR.
+    document.documentElement.dataset.rrAssetVersion = String(Date.now());
+    const rrStyle = document.createElement("link");
+    rrStyle.rel = "stylesheet";
+    rrStyle.href = "./styles.css?v=" + document.documentElement.dataset.rrAssetVersion;
+    document.head.appendChild(rrStyle);
+  </script>
+  <noscript><link rel="stylesheet" href="./styles.css?v=20261004-ptr1"></noscript>
 </head>
 
 <body>
@@ -73,7 +88,68 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
       Lace &amp; Leather
     </a>
   </p>
-  <script src="./app.js"></script>
-  <script src="./filigree.js"></script>
+  <div class="rr-ptr" id="rrPullRefresh" role="status" aria-live="polite" hidden></div>
+  <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
+  <script>
+    (() => {
+      "use strict";
+      const script = document.createElement("script");
+      script.src = "./app.js?v=" + document.documentElement.dataset.rrAssetVersion;
+      document.body.appendChild(script);
+
+      const notice = document.getElementById("rrPullRefresh");
+      const button = document.getElementById("rrRefreshButton");
+      let gesture = null, pulling = false, armed = false, refreshing = false, hideTimer;
+      const atTop = () => (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) <= 1;
+      const modalOpen = () => document.body.classList.contains("rr-modal-open");
+      const show = message => { clearTimeout(hideTimer); notice.textContent = message; notice.hidden = false; };
+      function reset() {
+        gesture = null; pulling = false; armed = false;
+        if (!refreshing) notice.hidden = true;
+      }
+      function refreshGarden() {
+        if (refreshing || modalOpen()) return;
+        if (!navigator.onLine) {
+          reset(); show("You’re offline. Reconnect to refresh your garden.");
+          hideTimer = setTimeout(() => { notice.hidden = true; }, 3000);
+          return;
+        }
+        refreshing = true; button.disabled = true; show("Refreshing your garden…");
+        // Cache-bust the page as well; local care dates and history stay untouched.
+        const url = new URL(window.location.href);
+        url.searchParams.set("_rrRefresh", String(Date.now()));
+        window.location.replace(url.href);
+      }
+      button.addEventListener("click", refreshGarden);
+      document.addEventListener("touchstart", event => {
+        reset();
+        if (refreshing || event.touches.length !== 1 || !atTop() || modalOpen() ||
+          event.target.closest("input, textarea, select, [contenteditable]")) return;
+        gesture = { x:event.touches[0].clientX, y:event.touches[0].clientY };
+      }, { passive:true });
+      document.addEventListener("touchmove", event => {
+        if (!gesture || refreshing) return;
+        if (event.touches.length !== 1 || modalOpen()) { reset(); return; }
+        const dx = event.touches[0].clientX - gesture.x;
+        const dy = event.touches[0].clientY - gesture.y;
+        if (!pulling && (dy < -6 || Math.abs(dx) > Math.max(12, dy))) { reset(); return; }
+        if (!pulling && dy < 12) return;
+        if (!atTop() || !event.cancelable) { reset(); return; }
+        event.preventDefault();
+        pulling = true; armed = dy >= 100;
+        show(armed ? "Release to refresh ✧" : "Pull down to refresh");
+      }, { passive:false });
+      document.addEventListener("touchend", event => {
+        if (event.touches.length) { reset(); return; }
+        const shouldRefresh = pulling && armed;
+        reset(); if (shouldRefresh) refreshGarden();
+      }, { passive:true });
+      document.addEventListener("touchcancel", reset, { passive:true });
+      window.addEventListener("pagehide", reset);
+      window.addEventListener("pageshow", () => {
+        refreshing = false; button.disabled = false; reset();
+      });
+    })();
+  </script>
 </body>
 </html>
