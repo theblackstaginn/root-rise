@@ -707,3 +707,12 @@ body > p { margin:14px 12px; }
 body { height:auto; min-height:100vh; background-repeat:no-repeat; }
 .rr-footer { width:min(760px,calc(100% - 32px)); margin:0 auto; padding:0 0 calc(24px + env(safe-area-inset-bottom)); color:#bfcbb1; text-align:center; font:12px/1.8 var(--font-body); }
 .rr-footer a { color:#ddc29b; }
+
+/* Keep the garden backdrop viewport-sized, including on iPhone Safari. */
+body { isolation:isolate; background:#14251b; }
+body::before {
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0,rgba(99,117,65,.19),transparent 60%),
+    linear-gradient(180deg,rgba(8,22,14,.48),rgba(8,19,13,.87)),
+    var(--bgUrl) center/cover no-repeat,#14251b;
+}
