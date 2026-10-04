@@ -232,6 +232,14 @@
     return { isDue: daysUntil <= 0, lastCaredISO: last, daysUntil };
   }
 
+  function careStatus(due) {
+    if (!due.lastCaredISO) return "First check-in";
+    if (due.daysUntil < 0) return "Check-in overdue";
+    if (due.daysUntil === 0) return "Check today";
+    if (due.daysUntil === 1) return "Check tomorrow";
+    return `Check in ${due.daysUntil} days`;
+  }
+
   function formatNiceDate(iso) {
     if (!iso) return "Not tracked yet";
     const d = parseISODate(iso);
@@ -305,13 +313,16 @@
       const img = plantImageFile(p);
       const dueClass = due.isDue ? "is-due" : "";
       const aria = `${p.name}${p.countLabel ? " " + p.countLabel : ""}`;
+      const status = careStatus(due);
 
       return `
         <button class="rr-tile ${dueClass}" type="button"
           data-id="${escapeAttr(p.id)}"
-          aria-label="${escapeHTML(aria)}">
+          aria-label="${escapeHTML(aria + '. ' + status + '. Check the soil before watering.')}">
           <div class="rr-tile-img" style="background-image:url('./${escapeAttr(img)}')"></div>
           <div class="rr-embers" aria-hidden="true"></div>
+          <span style="position:relative;z-index:4;display:block;padding-top:10px;color:var(--text);font:16px/1.35 var(--font-body)">${escapeHTML(aria)}</span>
+          <span style="position:relative;z-index:4;display:block;padding-top:6px;color:var(--muted);font:12px/1.5 var(--font-body)">${escapeHTML(status)}</span>
         </button>
       `;
     }).join("");
@@ -365,7 +376,7 @@
     const img = plantImageFile(plant);
     if (el.modalThumb) el.modalThumb.style.backgroundImage = `url("./${img}")`;
     if (el.modalTitle) el.modalTitle.textContent = `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`;
-    if (el.modalSub) el.modalSub.textContent = due.isDue ? "Due now." : "Not due yet.";
+    if (el.modalSub) el.modalSub.textContent = careStatus(due) + ". Check the soil before watering.";
 
     const last = due.lastCaredISO;
     const nextNice = nextCareNice(plant, last);
