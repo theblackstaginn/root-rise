@@ -99,7 +99,7 @@
   <button class="rr-refresh-button" id="rrBackupButton" type="button">Download garden backup</button>
   <button class="rr-refresh-button" id="rrRestoreButton" type="button">Restore garden backup</button>
   <input type="file" id="rrRestoreFile" accept=".json,application/json" hidden>
-  <p>Keep a copy of your care dates and tending ledger. Download a backup here, then restore that file on your other device.</p>
+  <p>Keep a copy of your care dates, tending ledger and Ember journal access. Keep the backup private; restore it on your other device to reconnect your journal.</p>
   <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
   </section>
   <footer class="rr-footer">
@@ -157,7 +157,10 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
           }
           const now = new Date();
           const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
-          const backup = { app:"root-rise", version:1, exportedAt:now.toISOString(), plantState, caredLog };
+          const counselJournalKey = localStorage.getItem("rr.counselOwner.v1");
+          if (counselJournalKey !== null && !/^[a-f0-9]{64}$/.test(counselJournalKey)) throw new Error("Unreadable journal key");
+          const backup = { app:"root-rise", version:1, exportedAt:now.toISOString(), plantState, caredLog,
+            ...(counselJournalKey ? { counselJournalKey } : {}) };
           const blob = new Blob([JSON.stringify(backup, null, 2)], { type:"application/json" });
           url = URL.createObjectURL(blob);
           link = document.createElement("a");
@@ -187,6 +190,7 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
         if (!data || data.app !== "root-rise" || data.version !== 1 ||
           !data.plantState || typeof data.plantState !== "object" || Array.isArray(data.plantState) ||
           !Array.isArray(data.caredLog)) return false;
+        if (data.counselJournalKey !== undefined && (typeof data.counselJournalKey !== "string" || !/^[a-f0-9]{64}$/.test(data.counselJournalKey))) return false;
         const stateOK = Object.entries(data.plantState).every(([id,entry]) =>
           plantIds.has(id) && entry && typeof entry === "object" && !Array.isArray(entry) &&
           Object.keys(entry).every(key => ["lastCaredISO","intervalDays","checkAfterISO","note"].includes(key)) &&
@@ -220,10 +224,14 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
           }
           if (!window.confirm("Restore this garden backup? It will replace the care dates and ledger on this device. Download your current backup first if you want to keep it.")) return;
           const keys = ["rr.plantState.v4","rr.caredLog.v4"];
+          const replacements = [JSON.stringify(data.plantState),JSON.stringify(data.caredLog)];
+          if (data.counselJournalKey) {
+            keys.push("rr.counselOwner.v1","rr.counselCache.v1","rr.counselPending.v1");
+            replacements.push(data.counselJournalKey,"{}","null");
+          }
           const previous = keys.map(key => localStorage.getItem(key));
           try {
-            localStorage.setItem(keys[0], JSON.stringify(data.plantState));
-            localStorage.setItem(keys[1], JSON.stringify(data.caredLog));
+            keys.forEach((key,index) => localStorage.setItem(key,replacements[index]));
           } catch {
             let recovered = true;
             for (let i = 0; i < keys.length; i++) {

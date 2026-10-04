@@ -732,3 +732,13 @@ body::before {
 .rr-counsel [hidden] { display:none; }
 .rr-counsel .rr-counsel-status { color:#e3c498; }
 .rr-counsel .rr-counsel-help { font-size:12px; }
+
+
+/* Replies stay bounded inside each plant’s journal. */
+.rr-plant-journal { border-top:1px solid #b5a07755; margin-top:24px; padding-top:22px; }
+.rr-journal-entries { max-height:360px; overflow:auto; overscroll-behavior:contain; margin-top:14px; }
+.rr-journal-entry { margin:10px 0; padding:12px; border:1px solid #b5a07744; border-radius:12px; background:#23382ac9; }
+.rr-journal-entry summary { cursor:pointer; color:#eddbbc; font:16px/1.5 var(--font-body); min-height:44px; }
+.rr-journal-entry p { white-space:pre-wrap; overflow-wrap:anywhere; }
+.rr-journal-question { border-bottom:1px solid #b5a07733; padding-bottom:12px; }
+.rr-journal-answer { color:#f1e4ca !important; }
