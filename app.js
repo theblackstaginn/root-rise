@@ -449,6 +449,11 @@
     }).join("");
   }
 
+  let counselModulePromise = null;
+  function loadCounselModule() {
+    if (!counselModulePromise) counselModulePromise = import('./plant-counsel.js?v=' + document.documentElement.dataset.rrAssetVersion).catch(error => { counselModulePromise = null; throw error; });
+    return counselModulePromise;
+  }
   let plantPhotoUrl = null;
   function clearPlantPhoto() {
     if (plantPhotoUrl) URL.revokeObjectURL(plantPhotoUrl);
@@ -477,7 +482,7 @@
         <label for="rrPlantRequestText">Request for chat</label>
         <textarea id="rrPlantRequestText" rows="7" readonly></textarea>
       </div>
-      <p class="rr-counsel-help">Paste the request into your chat with Ember and attach the same photo. Copying text does not copy the photo. Your photo stays on this device until you share it.</p>
+      <p class="rr-counsel-help">Paste the request into your chat with Ember and attach the same photo. Copying text does not copy the photo. Your description is saved in your plant journal; the photo stays on this device until you share it. Select the Root Rise plugin in chat so Ember can return her advice here.</p>
     `;
     el.modalGrid.appendChild(panel);
     const photo = panel.querySelector("input");
@@ -488,7 +493,19 @@
     const status = panel.querySelector(".rr-counsel-status");
     const manual = panel.querySelector(".rr-counsel-manual");
     const output = panel.querySelector("#rrPlantRequestText");
-    let selectedPhoto = null;
+    let selectedPhoto = null, preparedText = null, preparedSource = null, preparing = false;
+    let refreshJournal = () => {};
+    loadCounselModule().then(module => { if (panel.isConnected) refreshJournal = module.mountJournal(panel, plant.id); }).catch(() => {
+      if (panel.isConnected) status.textContent = "Ember’s journal couldn’t load. Refresh the garden and try again.";
+    });
+    async function prepareHandoff(text) {
+      if (preparedText && preparedSource === text) return preparedText;
+      status.textContent = "Sealing your plant request…";
+      const module = await loadCounselModule();
+      const handoff = await module.prepare(plant.id, text);
+      preparedSource = text; preparedText = handoff; refreshJournal();
+      return handoff;
+    }
     photo.addEventListener("change", () => {
       clearPlantPhoto(); selectedPhoto = null; preview.hidden = true; preview.removeAttribute("src"); share.hidden = true;
       const file = photo.files[0];
@@ -518,19 +535,32 @@
       ].join("\n\n");
     }
     copy.addEventListener("click", async () => {
-      const text = requestText(); if (!text) return;
-      output.value = text; manual.hidden = false;
+      const source = requestText(); if (!source || preparing) return;
+      preparing = true; copy.disabled = true; share.disabled = true; symptoms.disabled = true; photo.disabled = true;
+      let text;
+      try { text = await prepareHandoff(source); }
+      catch (error) { status.textContent = error.message || "Could not save the request. Your photo and description are still here."; return; }
+      finally { preparing = false; copy.disabled = false; share.disabled = false; symptoms.disabled = false; photo.disabled = false; }
+      output.value = text; manual.hidden = true;
       try {
         if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
         await navigator.clipboard.writeText(text);
         status.textContent = "Request copied. Paste it into chat with Ember, then attach your plant photo.";
       } catch {
-        output.focus(); output.select();
+        manual.hidden = false; output.focus(); output.select();
         status.textContent = "Select and copy the request below, then paste it into chat and attach your photo.";
       }
     });
     share.addEventListener("click", async () => {
-      const text = requestText(); if (!text) return;
+      const source = requestText(); if (!source || preparing) return;
+      if (!preparedText || preparedSource !== source) {
+        preparing = true; copy.disabled = true; share.disabled = true; symptoms.disabled = true; photo.disabled = true;
+        try { await prepareHandoff(source); status.textContent = "Request saved. Tap Share photo & request again to open your phone’s share sheet."; }
+        catch (error) { status.textContent = error.message || "Could not save the request. Try again."; }
+        finally { preparing = false; copy.disabled = false; share.disabled = false; symptoms.disabled = false; photo.disabled = false; }
+        return;
+      }
+      const text = preparedText;
       try {
         await navigator.share({title:"Root & Rise — plant counsel",text,files:[selectedPhoto]});
         status.textContent = "Share sheet closed. Check that your chat includes both the request and the photo, then send it to Ember.";

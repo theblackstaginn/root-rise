@@ -1,0 +1,3 @@
+[functions.root-rise-counsel]
+# Authentication is implemented in the handler with hashed, scoped capabilities.
+verify_jwt = false

@@ -1,0 +1,20 @@
+{
+  "$schema":"https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name":"root-rise",
+  "version":"0.1.0",
+  "description":"Read a Root & Rise plant issue and return Ember’s advice to that plant’s journal.",
+  "author":{"name":"Black Stag Web Studio"},
+  "extensions":{"com.openai":{"interface":{
+    "displayName":"Root Rise",
+    "shortDescription":"Ember’s plant journal",
+    "longDescription":"Help Jess understand a plant concern using her description and attached photo, then save advice back to the exact Root & Rise request. Request-scoped permissions expire after seven days. No care dates or watering records are changed.",
+    "developerName":"Black Stag Web Studio",
+    "category":"Productivity",
+    "capabilities":["Interactive"],
+    "defaultPrompt":"Help with this Root & Rise plant request and return your advice to its journal.",
+    "logo":"./assets/icon.png",
+    "composerIcon":"./assets/icon.png",
+    "brandColor":"#24392b",
+    "brandColorDark":"#c2a276"
+  }}}
+}
