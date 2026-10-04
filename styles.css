@@ -577,3 +577,49 @@ body.rr-modal-open{ overflow:hidden; }
     width: 100%;
   }
 }
+/* Hedge witch palette — first visual pass, using the existing page and artwork. */
+:root {
+  --bg0:#101b14; --bg1:#1b2b20; --text:#f2e5cc;
+  --font-ui:Georgia, "Times New Roman", serif;
+  --glowPink2:rgba(201,143,157,.26); --glowPink3:rgba(186,153,109,.14);
+  --textGradA:#f6ead5; --textGradB:#e0bebb; --textGradC:#d2ddbd;
+}
+body {
+  background:linear-gradient(180deg,rgba(13,25,17,.44),rgba(13,24,17,.72)),
+    var(--bgUrl) center/cover no-repeat fixed, #17251b;
+}
+.rr-header { padding:28px 8px 18px; }
+.rr-title { font-size:clamp(38px,7vw,60px); font-weight:400; letter-spacing:-1px; }
+.rr-sub { font-style:italic; font-size:16px; }
+.rr-section { margin-top:28px; }
+.rr-section-title { font-weight:400; font-size:25px; }
+.rr-tile {
+  background:linear-gradient(145deg,#344535,#17281e);
+  border-color:rgba(196,181,143,.30);
+}
+.rr-tile.is-due { border-color:rgba(220,173,172,.64); }
+.rr-card-wrap { border-color:rgba(202,182,139,.40); }
+.rr-card-glass,.rr-grounding,.rr-cared-empty {
+  color:#f4e6ce; -webkit-text-fill-color:currentColor;
+  background:rgba(24,42,31,.94);
+  background-clip:border-box; -webkit-background-clip:border-box;
+  border-color:rgba(202,182,139,.35); text-shadow:none;
+}
+.rr-card-glass { font-size:clamp(18px,3vw,24px); line-height:1.5; }
+.rr-grounding { padding:20px; line-height:1.7; }
+.rr-cared-item { background:rgba(27,46,34,.90); border-color:rgba(202,182,139,.25); }
+.rr-modal { background:#192b21; border-color:rgba(202,182,139,.40); }
+.rr-info { background:rgba(213,220,191,.05); border-color:rgba(202,182,139,.20); }
+.rr-btn-primary {
+  background:linear-gradient(180deg,#70515d,#4c3943);
+  border-color:#b68b91; box-shadow:0 8px 22px rgba(0,0,0,.25);
+}
+.rr-btn:hover { background-color:#344735; }
+:focus-visible { outline:3px solid #e5c798; outline-offset:4px; }
+body > p { color:#c6cfb9; text-align:center; font:12px/1.7 Georgia,serif; padding:0 12px; }
+body > p a { color:#ddc29b; }
+@media(min-width:800px) { .rr-tiles-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media(prefers-reduced-motion:reduce) {
+  .rr-ember { animation:none; }
+  .rr-embers { display:none; }
+}
