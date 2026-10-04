@@ -30,28 +30,41 @@
 <body>
   <main class="rr-shell" aria-label="Root & Rise">
     <header class="rr-header">
-      <h1 class="rr-title">Root &amp; Rise</h1>
+      <p class="rr-eyebrow">Jess’s hedge witch grimoire</p>
+      <img class="rr-book-seal" src="./icon-1024.png" alt="" width="120" height="120">
+      <h1 class="rr-title">Root <span>&amp;</span> Rise</h1>
       <p class="rr-sub">Tend what grows. Tend yourself.</p>
+      <div class="rr-hero-rule" aria-hidden="true"><span>☽</span><i></i><span>✧</span><i></i><span>☾</span></div>
+      <nav class="rr-journal-nav" aria-label="Grimoire sections">
+        <a href="#rrGarden">The garden</a>
+        <a href="#rrRitual">Daily ritual</a>
+        <a href="#rrLedger">Tending ledger</a>
+      </nav>
     </header>
 
-    <section class="rr-section" aria-label="Plants">
-      <h2 class="rr-section-title">Plants</h2>
+    <section class="rr-section" id="rrGarden" aria-label="Plants">
+      <p class="rr-eyebrow">Leaves, roots &amp; quiet company</p>
+      <h2 class="rr-section-title">The windowsill grimoire</h2>
+      <p class="rr-section-note">A rose glow invites a soil check. Let the plant guide the watering.</p>
       <div class="rr-tiles-grid" id="rrTiles" aria-label="Plant tiles"></div>
     </section>
 
-    <section class="rr-section" aria-label="Root &amp; Rise">
-      <h2 class="rr-section-title">Root &amp; Rise</h2>
+    <section class="rr-section" id="rrRitual" aria-label="Daily ritual">
+      <p class="rr-eyebrow">A little everyday magic</p>
+      <h2 class="rr-section-title">Root yourself. Rise gently.</h2>
 
       <div class="rr-card-wrap">
         <img class="rr-card-img" src="./root-rise-card.png" alt="" loading="lazy" />
         <div class="rr-card-glass" id="rrAffirmation" aria-live="polite"></div>
       </div>
 
+      <p class="rr-ritual-caption">A small grounding ritual</p>
       <div class="rr-grounding" id="rrGrounding" aria-live="polite"></div>
     </section>
 
-    <section class="rr-section" aria-label="Cared for">
-      <h2 class="rr-section-title">Cared For</h2>
+    <section class="rr-section" id="rrLedger" aria-label="Cared for">
+      <p class="rr-eyebrow">The quiet work, remembered</p>
+      <h2 class="rr-section-title">Tending ledger</h2>
       <div class="rr-cared-list" id="rrCaredList" aria-label="Cared for history"></div>
     </section>
   </main>
@@ -79,6 +92,17 @@
       </div>
     </div>
   </div>
+  <div class="rr-ptr" id="rrPullRefresh" role="status" aria-live="polite" hidden></div>
+  <section class="rr-vault" aria-labelledby="rrVaultTitle">
+  <p class="rr-eyebrow">Keep your grimoire close</p>
+  <h2 id="rrVaultTitle">Your garden, wherever you wander</h2>
+  <button class="rr-refresh-button" id="rrBackupButton" type="button">Download garden backup</button>
+  <button class="rr-refresh-button" id="rrRestoreButton" type="button">Restore garden backup</button>
+  <input type="file" id="rrRestoreFile" accept=".json,application/json" hidden>
+  <p>Keep a copy of your care dates and tending ledger. Download a backup here, then restore that file on your other device.</p>
+  <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
+  </section>
+  <footer class="rr-footer">
 <p class="footer-sub">
 Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black Stag Web Studio</a>
 </p>
@@ -88,12 +112,7 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
       Lace &amp; Leather
     </a>
   </p>
-  <div class="rr-ptr" id="rrPullRefresh" role="status" aria-live="polite" hidden></div>
-  <button class="rr-refresh-button" id="rrBackupButton" type="button">Download garden backup</button>
-  <button class="rr-refresh-button" id="rrRestoreButton" type="button">Restore garden backup</button>
-  <input type="file" id="rrRestoreFile" accept=".json,application/json" hidden>
-  <p>Keep a copy of your care dates and tending ledger. Download a backup here, then restore that file on your other device.</p>
-  <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
+  </footer>
   <script>
     (() => {
       "use strict";
