@@ -90,7 +90,9 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
   </p>
   <div class="rr-ptr" id="rrPullRefresh" role="status" aria-live="polite" hidden></div>
   <button class="rr-refresh-button" id="rrBackupButton" type="button">Download garden backup</button>
-  <p>Keep a copy of your care dates and tending ledger. Your garden doesn’t transfer automatically between devices.</p>
+  <button class="rr-refresh-button" id="rrRestoreButton" type="button">Restore garden backup</button>
+  <input type="file" id="rrRestoreFile" accept=".json,application/json" hidden>
+  <p>Keep a copy of your care dates and tending ledger. Download a backup here, then restore that file on your other device.</p>
   <button class="rr-refresh-button" id="rrRefreshButton" type="button">↻ Refresh garden</button>
   <script>
     (() => {
@@ -101,7 +103,7 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
 
       const notice = document.getElementById("rrPullRefresh");
       const button = document.getElementById("rrRefreshButton");
-      let gesture = null, pulling = false, armed = false, refreshing = false, hideTimer;
+      let gesture = null, pulling = false, armed = false, refreshing = false, restoring = false, hideTimer;
       const atTop = () => (window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0) <= 1;
       const modalOpen = () => document.body.classList.contains("rr-modal-open");
       const show = message => { clearTimeout(hideTimer); notice.textContent = message; notice.hidden = false; };
@@ -110,7 +112,7 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
         if (!refreshing) notice.hidden = true;
       }
       function refreshGarden() {
-        if (refreshing || modalOpen()) return;
+        if (refreshing || restoring || modalOpen()) return;
         if (!navigator.onLine) {
           reset(); show("You’re offline. Reconnect to refresh your garden.");
           hideTimer = setTimeout(() => { notice.hidden = true; }, 3000);
@@ -124,7 +126,7 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
       }
       button.addEventListener("click", refreshGarden);
       document.getElementById("rrBackupButton").addEventListener("click", () => {
-        if (refreshing) return;
+        if (refreshing || restoring) return;
         let link = null, url = null;
         try {
           const stateText = localStorage.getItem("rr.plantState.v4");
@@ -153,9 +155,80 @@ Website by <a href="https://blackstagweb.com" rel="noopener noreferrer">Black St
           hideTimer = setTimeout(() => { if (!refreshing) notice.hidden = true; }, 6000);
         }
       });
+      const restoreButton = document.getElementById("rrRestoreButton");
+      const restoreFile = document.getElementById("rrRestoreFile");
+      const plantIds = new Set(["albino-syngonium","prayer-plant","pothos","snake-plant","cactus","tiny-cactus","propagation-station","monstera"]);
+      function validCareDate(value) {
+        if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const [year,month,day] = value.split("-").map(Number);
+        const date = new Date(year,month - 1,day);
+        return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+      }
+      function validBackup(data) {
+        if (!data || data.app !== "root-rise" || data.version !== 1 ||
+          !data.plantState || typeof data.plantState !== "object" || Array.isArray(data.plantState) ||
+          !Array.isArray(data.caredLog)) return false;
+        const stateOK = Object.entries(data.plantState).every(([id,entry]) =>
+          plantIds.has(id) && entry && typeof entry === "object" && !Array.isArray(entry) &&
+          Object.keys(entry).every(key => ["lastCaredISO","intervalDays","checkAfterISO","note"].includes(key)) &&
+          (entry.lastCaredISO == null || validCareDate(entry.lastCaredISO)) &&
+          (entry.checkAfterISO === undefined || validCareDate(entry.checkAfterISO)) &&
+          (entry.intervalDays === undefined || Number.isInteger(entry.intervalDays) && entry.intervalDays >= 1 && entry.intervalDays <= 120) &&
+          (entry.note === undefined || typeof entry.note === "string" && entry.note.length <= 1000));
+        const logOK = data.caredLog.every(entry => {
+          if (!entry || !plantIds.has(entry.plantId) || typeof entry.plantName !== "string" ||
+            entry.plantName.length > 200 || typeof entry.tsISO !== "string") return false;
+          const date = new Date(entry.tsISO);
+          return Number.isFinite(date.getTime()) && date.toISOString() === entry.tsISO;
+        });
+        return stateOK && logOK;
+      }
+      restoreButton.addEventListener("click", () => {
+        if (!refreshing && !restoring && !modalOpen()) restoreFile.click();
+      });
+      restoreFile.addEventListener("change", async () => {
+        const file = restoreFile.files[0];
+        restoreFile.value = "";
+        if (!file || refreshing || restoring || modalOpen()) return;
+        restoring = true; restoreButton.disabled = true;
+        try {
+          if (file.size > 5 * 1024 * 1024) {
+            show("That backup is too large (maximum 5 MB). Your garden is unchanged."); return;
+          }
+          const data = JSON.parse(await file.text());
+          if (!validBackup(data)) {
+            show("That isn’t a valid Root & Rise backup. Your garden is unchanged."); return;
+          }
+          if (!window.confirm("Restore this garden backup? It will replace the care dates and ledger on this device. Download your current backup first if you want to keep it.")) return;
+          const keys = ["rr.plantState.v4","rr.caredLog.v4"];
+          const previous = keys.map(key => localStorage.getItem(key));
+          try {
+            localStorage.setItem(keys[0], JSON.stringify(data.plantState));
+            localStorage.setItem(keys[1], JSON.stringify(data.caredLog));
+          } catch {
+            let recovered = true;
+            for (let i = 0; i < keys.length; i++) {
+              try {
+                if (previous[i] === null) localStorage.removeItem(keys[i]);
+                else localStorage.setItem(keys[i], previous[i]);
+              } catch { recovered = false; }
+            }
+            show(recovered ? "Restore could not be saved. Your previous garden was kept." :
+              "Browser storage failed during restore and recovery. Keep your downloaded backup for recovery.");
+            return;
+          }
+          document.dispatchEvent(new Event("rr:garden-restored"));
+          show("Garden backup restored. Welcome back to your little green sanctuary.");
+        } catch {
+          show("The backup couldn’t be read or saved. Your garden was not replaced.");
+        } finally {
+          restoring = false; restoreButton.disabled = false;
+          hideTimer = setTimeout(() => { if (!refreshing) notice.hidden = true; }, 6000);
+        }
+      });
       document.addEventListener("touchstart", event => {
         reset();
-        if (refreshing || event.touches.length !== 1 || !atTop() || modalOpen() ||
+        if (refreshing || restoring || event.touches.length !== 1 || !atTop() || modalOpen() ||
           event.target.closest("input, textarea, select, [contenteditable]")) return;
         gesture = { x:event.touches[0].clientX, y:event.touches[0].clientY };
       }, { passive:true });

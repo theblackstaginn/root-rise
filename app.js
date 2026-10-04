@@ -476,6 +476,11 @@
     renderTiles();
     renderCaredList();
     wireModal();
+    document.addEventListener("rr:garden-restored", () => {
+      closeModal();
+      renderTiles();
+      renderCaredList();
+    });
   }
 
   if (document.readyState === "loading") {
