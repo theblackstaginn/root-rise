@@ -14,7 +14,7 @@
       "cactus": "cactus.png",
       "propagation-station": "propagation-station.png",
       "monstera": "monstera.png",
-      "tiny-cactus": "tiny-cactus.png"
+      "tiny-cactus": "cactus.png"
     }
   };
 
@@ -53,7 +53,7 @@
       careType:"Water (sparingly; fully dry)",
       lighting:"Bright light, some direct sun usually fine.",
       wateringDetail:"Small pots dry fast, but still: let dry fully. Water lightly, not constantly.",
-      notes:"If you don’t have tiny-cactus.png yet, it will fall back to cactus image." },
+      notes:"Check each small pot separately. Pot size, light, and drainage affect how quickly its soil dries." },
 
     { id:"propagation-station", name:"Propagation Station", imageKey:"propagation-station", countLabel:"", careIntervalDays:3,
       careType:"Refresh water / rinse vessel",
