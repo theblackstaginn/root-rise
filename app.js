@@ -223,6 +223,11 @@
 
   function computeDue(plant, state) {
     const last = state[plant.id]?.lastCaredISO || null;
+    const checkAfter = state[plant.id]?.checkAfterISO;
+    if (typeof checkAfter === "string" && /^\d{4}-\d{2}-\d{2}$/.test(checkAfter)) {
+      const daysUntil = diffDays(parseISODate(todayISO()), parseISODate(checkAfter));
+      return { isDue: daysUntil <= 0, lastCaredISO:last, daysUntil, checkAfterISO:checkAfter };
+    }
     if (!last) return { isDue: true, lastCaredISO: null, daysUntil: 0 };
 
     const t = parseISODate(todayISO());
@@ -233,7 +238,7 @@
   }
 
   function careStatus(due) {
-    if (!due.lastCaredISO) return "First check-in";
+    if (!due.lastCaredISO && !due.checkAfterISO) return "First check-in";
     if (due.daysUntil < 0) return "Check-in overdue";
     if (due.daysUntil === 0) return "Check today";
     if (due.daysUntil === 1) return "Check tomorrow";
@@ -246,7 +251,8 @@
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
   }
 
-  function nextCareNice(plant, lastISO) {
+  function nextCareNice(plant, lastISO, checkAfterISO) {
+    if (checkAfterISO) return formatNiceDate(checkAfterISO);
     if (!lastISO) return "Today";
     const last = parseISODate(lastISO);
     const next = new Date(last.getFullYear(), last.getMonth(), last.getDate() + plant.careIntervalDays);
@@ -367,9 +373,10 @@
         }
         if (!writeCarePair(undoCare.before)) return;
         const plantId = undoCare.plantId;
+        const wasDampCheck = undoCare.kind === "damp";
         clearCareUndo();
         renderTiles(); renderCaredList();
-        careMessage("Last care undone. Both the date and ledger were restored.");
+        careMessage(wasDampCheck ? "Soil-check reminder undone. Your previous schedule was restored." : "Last care undone. Both the date and ledger were restored.");
         el.tiles.querySelector('[data-id="' + plantId + '"]')?.focus();
       } catch { careMessage("Undo could not read your saved garden. No records were changed."); }
     });
@@ -555,7 +562,7 @@
     if (el.modalSub) el.modalSub.textContent = careStatus(due) + ". Check the soil before watering.";
 
     const last = due.lastCaredISO;
-    const nextNice = nextCareNice(plant, last);
+    const nextNice = nextCareNice(plant, last, due.checkAfterISO);
 
     if (el.modalGrid) {
       el.modalGrid.innerHTML = `
@@ -606,6 +613,18 @@
       };
     }
 
+    let dampBtn = document.getElementById("rrDampBtn");
+    if (!dampBtn && el.markBtn) {
+      dampBtn = document.createElement("button");
+      dampBtn.id = "rrDampBtn"; dampBtn.type = "button";
+      dampBtn.className = "rr-btn rr-btn-ghost";
+      el.markBtn.after(dampBtn);
+    }
+    if (dampBtn) {
+      dampBtn.disabled = due.checkAfterISO === soilRecheckDate();
+      dampBtn.textContent = dampBtn.disabled ? "Soil check set for " + formatNiceDate(due.checkAfterISO) : "Still damp · check in 2 days";
+      dampBtn.onclick = () => { if (postponeSoilCheck(plant)) closeModal(); };
+    }
     if (el.modalBackdrop) el.modalBackdrop.hidden = false;
     document.body.classList.add("rr-modal-open");
   }
@@ -634,6 +653,33 @@
     });
   }
 
+  function soilRecheckDate() {
+    const date = parseISODate(todayISO());
+    date.setDate(date.getDate() + 2);
+    return [date.getFullYear(), String(date.getMonth() + 1).padStart(2,"0"), String(date.getDate()).padStart(2,"0")].join("-");
+  }
+
+  function postponeSoilCheck(plant) {
+    let records;
+    try {
+      records = readCareRecords();
+      const checkAfterISO = soilRecheckDate();
+      if (records.state[plant.id]?.checkAfterISO === checkAfterISO) return false;
+      records.state[plant.id] = { ...records.state[plant.id], checkAfterISO };
+      const after = [JSON.stringify(records.state), records.raw[1]];
+      // A single atomic storage write: the care ledger is not touched.
+      localStorage.setItem(STORAGE.plantState, after[0]);
+      undoCare = { before:records.raw, after, plantId:plant.id, kind:"damp" };
+      if (undoBtn) { undoBtn.textContent = "Undo soil check"; undoBtn.hidden = false; }
+      renderTiles();
+      careMessage(plant.name + ": check the soil again on " + formatNiceDate(checkAfterISO) + ". No watering was recorded.");
+      return true;
+    } catch {
+      careMessage("The soil-check reminder could not be saved. Your care records were not changed.");
+      return false;
+    }
+  }
+
   function markCaredFor(plant) {
     let records;
     try { records = readCareRecords(); }
@@ -647,6 +693,7 @@
       return false;
     }
     records.state[plant.id] = { ...records.state[plant.id], lastCaredISO: todayISO() };
+    delete records.state[plant.id].checkAfterISO;
     records.log.push({
       plantId: plant.id,
       plantName: `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`,
@@ -655,7 +702,7 @@
     const after = [JSON.stringify(records.state), JSON.stringify(records.log)];
     if (!writeCarePair(after)) return false;
     undoCare = { before:records.raw, after, plantId:plant.id };
-    if (undoBtn) undoBtn.hidden = false;
+    if (undoBtn) { undoBtn.textContent = "Undo last care"; undoBtn.hidden = false; }
     renderTiles(); renderCaredList();
     careMessage(plant.name + " cared for. Use Undo last care if that was an accidental tap.");
     return true;
