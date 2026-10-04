@@ -449,6 +449,97 @@
     }).join("");
   }
 
+  let plantPhotoUrl = null;
+  function clearPlantPhoto() {
+    if (plantPhotoUrl) URL.revokeObjectURL(plantPhotoUrl);
+    plantPhotoUrl = null;
+  }
+
+  function addPlantCounsel(plant, lastCaredISO) {
+    clearPlantPhoto();
+    const panel = document.createElement("section");
+    panel.className = "rr-counsel rr-info-full";
+    panel.setAttribute("aria-label", "Ask Ember about this plant");
+    panel.innerHTML = `
+      <h4>Send a leaf to Ember</h4>
+      <p>Something looking off? Add a clear photo and tell me what changed.</p>
+      <label for="rrPlantPhoto">Plant photo</label>
+      <input id="rrPlantPhoto" type="file" accept="image/*">
+      <img class="rr-counsel-photo" alt="Your selected plant photo" hidden>
+      <label for="rrPlantSymptoms">What’s happening?</label>
+      <textarea id="rrPlantSymptoms" rows="3" maxlength="1500" placeholder="Yellow leaves for three days; soil still damp. Near an east window…"></textarea>
+      <div class="rr-counsel-actions">
+        <button class="rr-btn" id="rrCopyPlantRequest" type="button">Copy request for Ember</button>
+        <button class="rr-btn" id="rrSharePlantRequest" type="button" hidden>Share photo &amp; request</button>
+      </div>
+      <p class="rr-counsel-status" role="status" aria-live="polite"></p>
+      <div class="rr-counsel-manual" hidden>
+        <label for="rrPlantRequestText">Request for chat</label>
+        <textarea id="rrPlantRequestText" rows="7" readonly></textarea>
+      </div>
+      <p class="rr-counsel-help">Paste the request into your chat with Ember and attach the same photo. Copying text does not copy the photo. Your photo stays on this device until you share it.</p>
+    `;
+    el.modalGrid.appendChild(panel);
+    const photo = panel.querySelector("input");
+    const preview = panel.querySelector("img");
+    const symptoms = panel.querySelector("#rrPlantSymptoms");
+    const copy = panel.querySelector("#rrCopyPlantRequest");
+    const share = panel.querySelector("#rrSharePlantRequest");
+    const status = panel.querySelector(".rr-counsel-status");
+    const manual = panel.querySelector(".rr-counsel-manual");
+    const output = panel.querySelector("#rrPlantRequestText");
+    let selectedPhoto = null;
+    photo.addEventListener("change", () => {
+      clearPlantPhoto(); selectedPhoto = null; preview.hidden = true; preview.removeAttribute("src"); share.hidden = true;
+      const file = photo.files[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        photo.value = ""; status.textContent = "Choose a photo of your plant."; return;
+      }
+      selectedPhoto = file;
+      plantPhotoUrl = URL.createObjectURL(file);
+      preview.src = plantPhotoUrl; preview.hidden = false;
+      try { share.hidden = !(navigator.share && navigator.canShare?.({files:[file]})); } catch { share.hidden = true; }
+      status.textContent = "Photo selected. Add a short description, then prepare your request.";
+    });
+    function requestText() {
+      const description = symptoms.value.trim();
+      if (!description) { status.textContent = "Tell Ember what changed first."; symptoms.focus(); return null; }
+      if (!selectedPhoto) { status.textContent = "Add a plant photo first so Ember can examine it."; photo.focus(); return null; }
+      return [
+        "Ember, help Jess with a plant issue from her Root & Rise grimoire.",
+        "Plant: " + plant.name + (plant.countLabel ? " " + plant.countLabel : ""),
+        "Jess’s description: " + description,
+        "Last marked cared for: " + (lastCaredISO || "Not recorded") + " (a care check-in, not proof of watering).",
+        "Usual care guidance: " + plant.careType,
+        "Light guidance: " + plant.lighting + " (recommended conditions; actual conditions may differ).",
+        "I’m attaching the plant photo. Examine the actual attachment; if it is missing or unreadable, ask me to attach it before making a visual assessment.",
+        "Explain the most likely causes and your confidence, distinguish what you see from what you infer, and ask only the essential follow-up questions. Give one practical next step first, plus signs to watch for. Don’t claim a certain diagnosis from a photo, assume watering happened on the care date, or recommend watering without checking soil moisture. Keep the advice warm, clear and grounded."
+      ].join("\n\n");
+    }
+    copy.addEventListener("click", async () => {
+      const text = requestText(); if (!text) return;
+      output.value = text; manual.hidden = false;
+      try {
+        if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+        await navigator.clipboard.writeText(text);
+        status.textContent = "Request copied. Paste it into chat with Ember, then attach your plant photo.";
+      } catch {
+        output.focus(); output.select();
+        status.textContent = "Select and copy the request below, then paste it into chat and attach your photo.";
+      }
+    });
+    share.addEventListener("click", async () => {
+      const text = requestText(); if (!text) return;
+      try {
+        await navigator.share({title:"Root & Rise — plant counsel",text,files:[selectedPhoto]});
+        status.textContent = "Share sheet closed. Check that your chat includes both the request and the photo, then send it to Ember.";
+      } catch (error) {
+        status.textContent = error.name === "AbortError" ? "Sharing cancelled. Your photo and description are still here." : "Sharing couldn’t finish. Use Copy request, then attach the photo in chat.";
+      }
+    });
+  }
+
   function openModal(plantId) {
     const plant = PLANTS.find((p) => p.id === plantId);
     if (!plant) return;
@@ -505,6 +596,8 @@
       `;
     }
 
+    if (el.modalGrid) addPlantCounsel(plant, last);
+
     if (el.markBtn) {
       el.markBtn.disabled = last === todayISO();
       el.markBtn.textContent = el.markBtn.disabled ? "Already cared for today" : "Mark Cared For";
@@ -518,6 +611,7 @@
   }
 
   function closeModal() {
+    clearPlantPhoto();
     if (el.modalBackdrop) el.modalBackdrop.hidden = true;
     document.body.classList.remove("rr-modal-open");
     currentPlantId = null;
