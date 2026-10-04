@@ -293,6 +293,91 @@
   }
 
   let currentPlantId = null;
+  let undoCare = null;
+  let undoBtn = null;
+  let careNotice = null;
+  const CARE_KEYS = [STORAGE.plantState, STORAGE.caredLog];
+
+  function careMessage(message) {
+    if (careNotice) { careNotice.textContent = message; careNotice.hidden = false; }
+    if (currentPlantId && el.modalSub) el.modalSub.textContent = message;
+  }
+
+  function clearCareUndo() {
+    undoCare = null;
+    if (undoBtn) undoBtn.hidden = true;
+  }
+
+  function readCareRecords() {
+    const raw = CARE_KEYS.map(key => localStorage.getItem(key));
+    const state = raw[0] === null ? {} : JSON.parse(raw[0]);
+    const log = raw[1] === null ? [] : JSON.parse(raw[1]);
+    if (!state || typeof state !== "object" || Array.isArray(state) || !Array.isArray(log) ||
+      !Object.values(state).every(entry => entry && typeof entry === "object" && !Array.isArray(entry) &&
+        (entry.lastCaredISO == null || typeof entry.lastCaredISO === "string")) ||
+      !log.every(entry => entry && typeof entry === "object" && typeof entry.tsISO === "string")) {
+      throw new Error("Unreadable care records");
+    }
+    return { state, log, raw };
+  }
+
+  function writeCarePair(values) {
+    let previous;
+    try {
+      previous = CARE_KEYS.map(key => localStorage.getItem(key));
+      values.forEach((value, i) => {
+        if (value === null) localStorage.removeItem(CARE_KEYS[i]);
+        else localStorage.setItem(CARE_KEYS[i], value);
+      });
+      return true;
+    } catch {
+      let recovered = Boolean(previous);
+      if (previous) previous.forEach((value, i) => {
+        try {
+          if (value === null) localStorage.removeItem(CARE_KEYS[i]);
+          else localStorage.setItem(CARE_KEYS[i], value);
+        } catch { recovered = false; }
+      });
+      careMessage(recovered ? "This change could not be saved. Your previous garden was kept." :
+        "Browser storage failed. Keep your downloaded backup for recovery.");
+      return false;
+    }
+  }
+
+  function setupCareUndo() {
+    if (!el.caredList) return;
+    undoBtn = document.createElement("button");
+    undoBtn.type = "button";
+    undoBtn.className = "rr-btn rr-btn-ghost";
+    undoBtn.textContent = "Undo last care";
+    undoBtn.hidden = true;
+    undoBtn.style.cssText = "margin:0 6px 12px";
+    careNotice = document.createElement("p");
+    careNotice.setAttribute("role", "status");
+    careNotice.hidden = true;
+    careNotice.style.cssText = "color:var(--text);text-align:center;margin:0 6px 12px;line-height:1.5";
+    el.caredList.before(careNotice, undoBtn);
+    undoBtn.addEventListener("click", () => {
+      if (!undoCare) return;
+      try {
+        if (CARE_KEYS.some((key, i) => localStorage.getItem(key) !== undoCare.after[i])) {
+          clearCareUndo();
+          careMessage("Your garden has changed since that care entry. Undo was stopped to protect newer records.");
+          return;
+        }
+        if (!writeCarePair(undoCare.before)) return;
+        const plantId = undoCare.plantId;
+        clearCareUndo();
+        renderTiles(); renderCaredList();
+        careMessage("Last care undone. Both the date and ledger were restored.");
+        el.tiles.querySelector('[data-id="' + plantId + '"]')?.focus();
+      } catch { careMessage("Undo could not read your saved garden. No records were changed."); }
+    });
+    window.addEventListener("storage", event => {
+      if (event.key === null || CARE_KEYS.includes(event.key)) clearCareUndo();
+    });
+  }
+
 
   function renderDaily() {
     // Set CSS var expected by styles.css
@@ -421,9 +506,10 @@
     }
 
     if (el.markBtn) {
+      el.markBtn.disabled = last === todayISO();
+      el.markBtn.textContent = el.markBtn.disabled ? "Already cared for today" : "Mark Cared For";
       el.markBtn.onclick = () => {
-        markCaredFor(plant);
-        closeModal();
+        if (markCaredFor(plant)) closeModal();
       };
     }
 
@@ -455,20 +541,30 @@
   }
 
   function markCaredFor(plant) {
-    const state = loadPlantState();
-    state[plant.id] = { lastCaredISO: todayISO() };
-    savePlantState(state);
-
-    const log = loadCaredLog();
-    log.push({
+    let records;
+    try { records = readCareRecords(); }
+    catch {
+      careMessage("Your saved care records could not be read. Nothing was overwritten; restore a backup or check browser storage.");
+      return false;
+    }
+    if (records.state[plant.id]?.lastCaredISO === todayISO()) {
+      careMessage("This plant is already cared for today.");
+      if (el.markBtn) el.markBtn.disabled = true;
+      return false;
+    }
+    records.state[plant.id] = { ...records.state[plant.id], lastCaredISO: todayISO() };
+    records.log.push({
       plantId: plant.id,
       plantName: `${plant.name}${plant.countLabel ? " " + plant.countLabel : ""}`,
       tsISO: new Date().toISOString()
     });
-    saveCaredLog(log);
-
-    renderTiles();
-    renderCaredList();
+    const after = [JSON.stringify(records.state), JSON.stringify(records.log)];
+    if (!writeCarePair(after)) return false;
+    undoCare = { before:records.raw, after, plantId:plant.id };
+    if (undoBtn) undoBtn.hidden = false;
+    renderTiles(); renderCaredList();
+    careMessage(plant.name + " cared for. Use Undo last care if that was an accidental tap.");
+    return true;
   }
 
   function boot() {
@@ -476,7 +572,10 @@
     renderTiles();
     renderCaredList();
     wireModal();
+    setupCareUndo();
     document.addEventListener("rr:garden-restored", () => {
+      clearCareUndo();
+      if (careNotice) { careNotice.textContent = ""; careNotice.hidden = true; }
       closeModal();
       renderTiles();
       renderCaredList();
